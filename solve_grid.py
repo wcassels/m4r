@@ -79,7 +79,7 @@ def set_boundary(A, condition, edge, val, c, grid_dist, robin_ref=0):
         boundary_idx = rect_helpers.get_boundary_positions(edge)
 
         for i in range(1, mn-1):
-            rhs = A[rect_helpers.get_boundary_indices(edge, i)]
+            rhs = A[rect_helpers.get_boundary_neighbourhood(edge, i)]
             rhs[0] = -val * robin_ref
             alphas = np.linalg.solve(Phi_Robin, rhs)
             A[boundary_idx(i)] = alphas.dot(phi_vec)

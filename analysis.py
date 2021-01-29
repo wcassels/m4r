@@ -14,13 +14,19 @@ def boundary_test_case(time_step=1.0e-4):
     x_min, x_max = 0, 1.0
     y_min, y_max = 0, 1.0
 
-    rho, param_c, k = 1, 1, 1
+    # rho, param_c, k = 1, 1, 1
+    rho, param_c, k = 7850, 460, 52
     diffusivity = k / (rho * param_c)
 
-    shape_param = 2
+    shape_param = 16
 
-    boundary_conditions = {"North": ("Dirichlet", (0, None)), "East": ("Dirichlet", (0, None)),
-                            "South": ("Neumann", (0, None)), "West": ("Neumann", (0, None))}
+    # test 1
+    boundary_conditions = {"North": ("Robin", (-750/k, 0)), "East": ("Robin", (-750/k, 0)),
+                           "South": ("Dirichlet", (100, None)), "West": ("Neumann", (0, None))}
+
+    # test 2
+    # boundary_conditions = {"North": ("Dirichlet", (0, None)), "East": ("Dirichlet", (0, None)),
+                            # "South": ("Neumann", (0, None)), "West": ("Neumann", (0, None))}
 
     grid_dist = 0.025
     time_step = 0.0001 # change
@@ -31,8 +37,8 @@ def boundary_test_case(time_step=1.0e-4):
     x, y = np.meshgrid(x_line, y_line)
 
     # Initial condition
-    T = np.ones_like(x, dtype=np.float64)
-    # T = np.exp(-(x**2+y**2))
+    # T = np.ones_like(x, dtype=np.float64)
+    T = np.exp(-(x**2+y**2))+100
 
     fig = plt.figure()
     ax = fig.gca(projection='3d')

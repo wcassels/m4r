@@ -106,7 +106,7 @@ def get_Phi_Neumann(c, grid_dist):
     """
     Phi_Neumann = np.zeros((5,5), dtype=np.float64)
 
-    # Max inter-neighourhood distance is 4 for this configuration
+    # Max inter-neighbourhood distance is 4 for this configuration
     cr_0_sq = (c**2) * 16
 
     # Neumann boundary condition row
@@ -132,7 +132,7 @@ def get_Phi_Robin(c, grid_dist, condition_value):
     for j in range(5):
         Phi_Robin[0,j] = j / np.sqrt(j**2 + cr_0_sq)
 
-    Phi[0] -= condition_value * np.sum(np.sqrt(np.arange(4) + (c**2)*16))
+    Phi_Robin[0] -= condition_value * np.sum(np.sqrt(np.arange(4) + (c**2)*16))
 
     # Other rows
     for i in range(1, 5):
