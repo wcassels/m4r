@@ -23,21 +23,34 @@ def get_grid_indices(i, j, N):
     return T_idx_y, T_idx_x
 
 
-def get_boundary_indices(edge, pos):
+def get_boundary_neighbourhood(edge, pos):
     """
     Return the neighbourhood indices for a boundary node, with neighbourhood
     configuration "....."
     """
     if edge == "North":
-        return [[pos, pos, pos, pos, pos], [0, 1, 2, 3, 4]]
-    elif edge == "South":
-        return [[pos, pos, pos, pos, pos], [-1, -2, -3, -4, -5]]
-    elif edge == "East":
-        return [[-1, -2, -3, -4, -5], [pos, pos, pos, pos, pos]]
-    elif edge == "West":
         return [[0, 1, 2, 3, 4], [pos, pos, pos, pos, pos]]
+    elif edge == "South":
+        return [[-1, -2, -3, -4, -5], [pos, pos, pos, pos, pos]]
+    elif edge == "East":
+        return [[pos, pos, pos, pos, pos], [-1, -2, -3, -4, -5]]
+    elif edge == "West":
+        return [[pos, pos, pos, pos, pos], [0, 1, 2, 3, 4]]
     else:
         raise ValueError("Invalid boundary selected")
+
+
+def get_boundary_positions(edge):
+        if edge == "North":
+            return lambda i: (0, i)
+        elif edge == "South":
+            return lambda i: (-1, i)
+        elif edge == "East":
+            return lambda i: (i, -1)
+        elif edge == "West":
+            return lambda i: (i, 0)
+        else:
+            raise ValueError("Invalid boundary selected")
 
 
 def get_update_weights(Phi, diffusivity, shape_param):
@@ -107,3 +120,24 @@ def get_Phi_Neumann(c, grid_dist):
 
 
     return Phi_Neumann
+
+
+def get_Phi_Robin(c, grid_dist, condition_value):
+    Phi_Robin = np.zeros((5,5), dtype=np.float64)
+
+    # Max inter-neighourhood distance is 4 for this configuration
+    cr_0_sq = (c**2) * 16
+
+    # Neumann boundary condition row
+    for j in range(5):
+        Phi_Robin[0,j] = j / np.sqrt(j**2 + cr_0_sq)
+
+    Phi[0] -= condition_value * np.sum(np.sqrt(np.arange(4) + (c**2)*16))
+
+    # Other rows
+    for i in range(1, 5):
+        for j in range(5):
+            Phi_Robin[i,j] = np.sqrt((i-j)**2 + cr_0_sq) * grid_dist
+
+
+    return Phi_Robin

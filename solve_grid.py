@@ -30,11 +30,16 @@ def domain_increment(A, weighted_phi):
     return combined_2nd_deriv
 
 
-def set_boundary(A, condition, edge, val, c):
+def set_boundary(A, condition, edge, val, c, grid_dist, robin_ref=0):
     """
     Compute the boundary values of the rectangle using boundary conditions provided
     """
     m, n = A.shape
+
+    if edge == "North" or edge == "South":
+        mn = n
+    elif edge == "East" or edge ==  "West":
+        mn = m
 
     if condition == "Dirichlet":
         if edge == "North":
@@ -53,31 +58,34 @@ def set_boundary(A, condition, edge, val, c):
     elif condition == "Neumann":
         Phi_Neumann = rect_helpers.get_Phi_Neumann(c, grid_dist)
 
-        # phi_vec = np.sqrt(np.array(0, 1, 1, 2, 2) + (c**2) * 16)
-        phi_vec = np.sqrt(np.arange(4) + (c**2)*16)
+        phi_vec = np.sqrt(np.arange(5)**2 + (c**2)*16) * grid_dist
 
-        if edge == "North":
-            boundary_idx = lambda i: i, 0
-        elif edge == "South":
-            boundary_idx = lambda i: i, -1
-        elif edge == "East":
-            boundary_idx = lambda i: -1, i
-        elif edge == "West":
-            boundary_idx = lambda i: 0, i
-        else:
-            raise ValueError("Invalid boundary selected")
+        boundary_idx = rect_helpers.get_boundary_positions(edge)
 
         # Exclude corners for now (or permanently? paper seemingly does not do corners.)
-        for i in range(1, n-1):
-            rhs = A[rect_helpers.get_boundary_indices(edge, i)]
+        for i in range(1, mn-1):
+            rhs = A[rect_helpers.get_boundary_neighbourhood(edge, i)]
             rhs[0] = val
-            alphas = np.linalg.solve(Neumann_Phi, neighbourhood_vals)
+            alphas = np.linalg.solve(Phi_Neumann, rhs)
             A[boundary_idx(i)] = alphas.dot(phi_vec)
 
         return
 
     elif condition == "Robin":
-        pass
+        Phi_Robin = rect_helpers.get_Phi_Robin(c, grid_dist, val)
+
+        phi_vec = np.sqrt(np.arange(5)**2 + (c**2)*16) * grid_dist
+
+        boundary_idx = rect_helpers.get_boundary_positions(edge)
+
+        for i in range(1, mn-1):
+            rhs = A[rect_helpers.get_boundary_indices(edge, i)]
+            rhs[0] = -val * robin_ref
+            alphas = np.linalg.solve(Phi_Robin, rhs)
+            A[boundary_idx(i)] = alphas.dot(phi_vec)
+
+        return
+
     else:
         raise ValueError("Invalid boundary condition selected")
 
@@ -96,7 +104,7 @@ def step_domain(T, update_weights):
     return T[1:-1,1:-1]
 
 
-def grid_step(T, weighted_phi, grid_dist, c, boundary_conditions):
+def grid_step(T, update_weights, grid_dist, c, boundary_conditions):
     """
     Step forwards using step_domain to compute values at domain nodes then
     applies boundary conditions
@@ -104,10 +112,14 @@ def grid_step(T, weighted_phi, grid_dist, c, boundary_conditions):
     Boundary conditions - a dictionary with entries {"Edge": ("Condition", value)}
     """
     # Update domain nodes
-    step_domain(T, weighted_phi)
+    step_domain(T, update_weights)
 
     # Apply boundary conditions
     for edge, (condition, value) in boundary_conditions.items():
-        set_boundary(T, condition, edge, value, c)
+        if condition == "Robin":
+            # Robin boundaries have two parameters
+            set_boundary(T, condition, edge, value[0], c, grid_dist, robin_ref=value[1])
+        else:
+            set_boundary(T, condition, edge, value[0], c, grid_dist)
 
     return T
