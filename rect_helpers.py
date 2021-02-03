@@ -29,13 +29,13 @@ def get_boundary_neighbourhood(edge, pos):
     configuration "....."
     """
     if edge == "North":
-        return [[0, 1, 2, 3, 4], [pos, pos, pos, pos, pos]]
+        return ([0, 1, 2, 3, 4], [pos, pos, pos, pos, pos])
     elif edge == "South":
-        return [[-1, -2, -3, -4, -5], [pos, pos, pos, pos, pos]]
+        return ([-1, -2, -3, -4, -5], [pos, pos, pos, pos, pos])
     elif edge == "East":
-        return [[pos, pos, pos, pos, pos], [-1, -2, -3, -4, -5]]
+        return ([pos, pos, pos, pos, pos], [-1, -2, -3, -4, -5])
     elif edge == "West":
-        return [[pos, pos, pos, pos, pos], [0, 1, 2, 3, 4]]
+        return ([pos, pos, pos, pos, pos], [0, 1, 2, 3, 4])
     else:
         raise ValueError("Invalid boundary selected")
 

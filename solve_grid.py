@@ -64,7 +64,8 @@ def set_boundary(A, condition, edge, val, c, grid_dist, robin_ref=0):
 
         # Exclude corners for now (or permanently? paper seemingly does not do corners.)
         for i in range(1, mn-1):
-            rhs = A[rect_helpers.get_boundary_neighbourhood(edge, i)]
+            neighbourhood_x, neighbourhood_y = rect_helpers.get_boundary_neighbourhood(edge, i)
+            rhs = A[neighbourhood_x, neighbourhood_y]
             rhs[0] = val
             alphas = np.linalg.solve(Phi_Neumann, rhs)
             A[boundary_idx(i)] = alphas.dot(phi_vec)
