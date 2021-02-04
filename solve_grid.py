@@ -13,7 +13,9 @@ def domain_increment(A, weighted_phi):
     """
     For the uniform grid implementation, return the scaled sum of the second
     derivatives wrt x and y of A - this is the t such that T_new = T_old + t,
-    inside the domain of the grid
+    inside the domain of the grid (currently unused since step_grid is vastly
+    more efficient in the uniform case, but will be the primary method used in
+    solving non-uniform problems)
     """
 
     m, n = A.shape
