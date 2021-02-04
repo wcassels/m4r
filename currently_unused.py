@@ -61,3 +61,14 @@ def step_domain_old(T, weighted_phi):
     T += domain_increment(T, weighted_phi)
 
     return T[1:-1,1:-1]
+
+
+def plot_indices_excl_corners(x, y):
+    """
+    Used for plotting when corner values have not been computed.
+
+    This didn't work :D
+    """
+    x_list, y_list = np.ravel(np.arange(x)), np.ravel(np.arange(y))
+
+    return np.delete(x_list, [0, x-1, x*(y-1), x*y-1]), np.delete(y_list, [0, x-1, x*(y-1), x*y-1])

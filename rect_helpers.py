@@ -53,7 +53,7 @@ def get_boundary_positions(edge):
             raise ValueError("Invalid boundary selected")
 
 
-def get_update_weights(Phi, diffusivity, shape_param):
+def get_update_weights(Phi, diffusivity, time_step, grid_dist, shape_param):
     """
     Returns the coefficients in the linear combination of neighbourhood node
     of the increment between time steps. This is a constant in the uniform
@@ -69,10 +69,10 @@ def get_update_weights(Phi, diffusivity, shape_param):
 
     # weighted_phi = Phi^-T .dot(combined_deriv_vec)
     # (in this case don't need to transpose but will do in the general case)
-    return np.linalg.solve(Phi.T, sum_2nd_derivs * diffusivity)
+    return np.linalg.solve(Phi.T, sum_2nd_derivs * diffusivity * time_step / (grid_dist**2))
 
 
-def get_Phi(N, grid_dist, c):
+def get_Phi(N, c):
     """
     Returns the NxN collocation matrix of RBF function values for the uniform
     grid configuration
