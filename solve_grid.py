@@ -6,7 +6,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import time
 
-import rect_helpers
+import unif_utils
 
 
 def domain_increment(A, weighted_phi):
@@ -25,7 +25,7 @@ def domain_increment(A, weighted_phi):
     # Excluding boundaries for now
     for i in range(1, m-1):
         for j in range(1, n-1):
-            combined_2nd_deriv[i,j] = A[rect_helpers.get_grid_indices(i, j, N)].dot(weighted_phi)
+            combined_2nd_deriv[i,j] = A[unif_utils.get_grid_indices(i, j, N)].dot(weighted_phi)
 
     return combined_2nd_deriv
 
@@ -56,15 +56,15 @@ def set_boundary(A, condition, edge, val, c, grid_dist, robin_ref=0):
         return
 
     elif condition == "Neumann":
-        Phi_Neumann = rect_helpers.get_Phi_Neumann(c, grid_dist)
+        Phi_Neumann = unif_utils.get_Phi_Neumann(c, grid_dist)
 
         phi_vec = np.sqrt(np.arange(5)**2 + (c**2)*16) * grid_dist
 
-        boundary_idx = rect_helpers.get_boundary_positions(edge)
+        boundary_idx = unif_utils.get_boundary_positions(edge)
 
         # Exclude corners for now (or permanently? paper seemingly does not do corners.)
         for i in range(1, mn-1):
-            neighbourhood_x, neighbourhood_y = rect_helpers.get_boundary_neighbourhood(edge, i)
+            neighbourhood_x, neighbourhood_y = unif_utils.get_boundary_neighbourhood(edge, i)
             rhs = A[neighbourhood_x, neighbourhood_y]
             rhs[0] = val
             alphas = np.linalg.solve(Phi_Neumann, rhs)
@@ -73,14 +73,14 @@ def set_boundary(A, condition, edge, val, c, grid_dist, robin_ref=0):
         return
 
     elif condition == "Robin":
-        Phi_Robin = rect_helpers.get_Phi_Robin(c, grid_dist, val)
+        Phi_Robin = unif_utils.get_Phi_Robin(c, grid_dist, val)
 
         phi_vec = np.sqrt(np.arange(5)**2 + (c**2)*16) * grid_dist
 
-        boundary_idx = rect_helpers.get_boundary_positions(edge)
+        boundary_idx = unif_utils.get_boundary_positions(edge)
 
         for i in range(1, mn-1):
-            rhs = A[rect_helpers.get_boundary_neighbourhood(edge, i)]
+            rhs = A[unif_utils.get_boundary_neighbourhood(edge, i)]
             rhs[0] = -val * robin_ref
             alphas = np.linalg.solve(Phi_Robin, rhs)
             A[boundary_idx(i)] = alphas.dot(phi_vec)

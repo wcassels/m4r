@@ -1,5 +1,5 @@
 """
-Functions to generate plot! (Will fill up when I copy across old code)
+Functions to generate plots! (Will fill up when I copy across old code)
 """
 
 import numpy as np
@@ -8,7 +8,11 @@ from matplotlib.pyplot import cm
 import time
 
 import solve_grid
-import rect_helpers
+import unif_utils
+
+
+def sarler_first_test():
+    # write this :)
 
 def sarler_second_test(time_step=1.0e-4, num_steps=50, plot_every=20, trunc=50, diff=None):
     # second test
@@ -50,10 +54,10 @@ def sarler_second_test(time_step=1.0e-4, num_steps=50, plot_every=20, trunc=50, 
     T = np.ones_like(x, dtype=np.float64)
 
     # Get the collocation matrix
-    Phi = rect_helpers.get_Phi(5, shape_param)
+    Phi = unif_utils.get_Phi(5, shape_param)
 
     # Get simplified update weights - only works for uniform configuration!
-    update_weights = rect_helpers.get_update_weights(Phi, diffusivity, time_step, grid_dist, shape_param)
+    update_weights = unif_utils.get_update_weights(Phi, diffusivity, time_step, grid_dist, shape_param)
 
     for t in range(1, num_steps+1):
         solve_grid.grid_step(T, update_weights, grid_dist, shape_param, boundary_conditions)
@@ -68,7 +72,6 @@ def sarler_second_test(time_step=1.0e-4, num_steps=50, plot_every=20, trunc=50, 
             surface = ax.plot_surface(x, y, T, linewidth=0, antialiased=False)
             ax.set_xlabel('x')
             ax.set_ylabel('y')
-            # fig.colorbar(surface)
             ax.set_title(f'RBF solution')
 
             trunc_sol = sarler_second_case_analytical(x, y, t*time_step, diffusivity, trunc=trunc)
@@ -76,7 +79,6 @@ def sarler_second_test(time_step=1.0e-4, num_steps=50, plot_every=20, trunc=50, 
             surface = ax.plot_surface(x, y, trunc_sol)
             ax.set_xlabel('x')
             ax.set_ylabel('y')
-            # fig.colorbar(surface)
             ax.set_title(f'Truncated analytical solutiones')
             plt.show()
 
@@ -100,13 +102,13 @@ def gauss_inf_domain_errs(diffusivity, time_step, x_min, x_max, y_min,
     x, y = np.meshgrid(x_line, y_line)
 
     # Get the collocation matrix
-    Phi = rect_helpers.get_Phi(5, shape_param)
+    Phi = unif_utils.get_Phi(5, shape_param)
 
     # Initial condition
     T = np.exp(-(x**2 + y**2))
 
     # Get simplified update weights - only works for uniform configuration!
-    update_weights = rect_helpers.get_update_weights(Phi, diffusivity, time_step, grid_dist, shape_param)
+    update_weights = unif_utils.get_update_weights(Phi, diffusivity, time_step, grid_dist, shape_param)
 
     errs = np.zeros(num_steps+1, dtype=np.float64)
     t1 = time.time()
@@ -173,8 +175,6 @@ def sarler_second_case_analytical(x, y, t, diff, trunc=50, dist=1):
             y_terms = sarler_second_case_nth(y[i,j], t, diff, dist, term_idx)
             sum_x = 4 * np.sum(x_terms) / np.pi
             sum_y = 4 * np.sum(y_terms) / np.pi
-
-            print(max(x_terms[-1], y_terms[-1]))
 
             sol[i,j] = sum_x * sum_y
 
