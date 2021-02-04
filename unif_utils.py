@@ -118,7 +118,6 @@ def get_Phi_Neumann(c, grid_dist):
         for j in range(5):
             Phi_Neumann[i,j] = np.sqrt((i-j)**2 + cr_0_sq) * grid_dist
 
-
     return Phi_Neumann
 
 
@@ -132,7 +131,7 @@ def get_Phi_Robin(c, grid_dist, condition_value):
     for j in range(5):
         Phi_Robin[0,j] = j / np.sqrt(j**2 + cr_0_sq)
 
-    Phi_Robin[0] -= condition_value * np.sum(np.sqrt(np.arange(4) + (c**2)*16))
+    Phi_Robin[0] -= condition_value * np.sqrt(np.arange(5)**2 + cr_0_sq) * grid_dist
 
     # Other rows
     for i in range(1, 5):

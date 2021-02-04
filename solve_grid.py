@@ -72,6 +72,10 @@ def set_boundary(A, condition, edge, val, c, grid_dist, robin_ref=0):
             alphas = np.linalg.solve(Phi_Neumann, rhs)
             A[boundary_idx(i)] = alphas.dot(phi_vec)
 
+            # Neumann testing
+            # deriv_vec = np.arange(5) / np.sqrt(np.arange(5)**2 + 16*(c**2))
+            # print(alphas.dot(deriv_vec))
+
         return
 
     elif condition == "Robin":
@@ -86,6 +90,8 @@ def set_boundary(A, condition, edge, val, c, grid_dist, robin_ref=0):
             rhs[0] = -val * robin_ref
             alphas = np.linalg.solve(Phi_Robin, rhs)
             A[boundary_idx(i)] = alphas.dot(phi_vec)
+
+            # ROBIN TESTING
 
         return
 

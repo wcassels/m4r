@@ -11,34 +11,75 @@ import solve_grid
 import unif_utils
 
 
-def sarler_first_test():
-    # write this :)
-
-def sarler_second_test(time_step=1.0e-4, num_steps=50, plot_every=20, trunc=50, diff=None):
-    # second test
-    x_min, x_max = 0, 1.0
-    y_min, y_max = 0, 1.0
+def sarler_first_test(time_step=1.0e-4, num_steps=50, plot_every=20, diff=None, shape_param=4):
+    x_min, x_max = 0.0, 0.6
+    y_min, y_max = 0.0, 1.0
 
     if diff is None:
-        rho, param_c, k = 1, 1, 1
         # rho, param_c, k = 7850, 460, 52
+        rho, param_c, k = 7850, 460, 52
         diffusivity = k / (rho * param_c)
     else:
         diffusivity = diff
 
-    shape_param = 16
-
     # test 1
-    # boundary_conditions = {"North": ("Robin", (-750/k, 0)), "East": ("Robin", (-750/k, 0)),
-    #                        "South": ("Dirichlet", (100, None)), "West": ("Neumann", (0, None))}
+    boundary_conditions = {"North": ("Robin", (-750/k, 0)), "East": ("Robin", (-750/k, 0)),
+                           "South": ("Dirichlet", (100, None)), "West": ("Neumann", (0, None))}
+
+    # second example
+    grid_dist = 0.02
+
+    x_line = np.arange(x_min, x_max + grid_dist, grid_dist)
+    y_line = np.arange(y_min, y_max + grid_dist, grid_dist)
+    x, y = np.meshgrid(x_line, y_line)
+    y = y[::-1]
+
+    # Initial condition according to
+    # https://www.compassis.com/downloads/Manuals/Validation/Tdyn-ValTest7-Thermal_conductivity_in_a_solid.pdf
+    # (seemingly omitted in Sarler paper)
+    T = np.zeros_like(x, dtype=np.float64)
+
+    # Get the collocation matrix
+    Phi = unif_utils.get_Phi(5, shape_param)
+
+    # Get simplified update weights - only works for uniform configuration!
+    update_weights = unif_utils.get_update_weights(Phi, diffusivity, time_step, grid_dist, shape_param)
+
+    for t in range(1, num_steps+1):
+        solve_grid.grid_step(T, update_weights, grid_dist, shape_param, boundary_conditions)
+        # Corner values are not computed. They also have no influence on future calculations
+        # so until I figure out how to do 3D plots without them, I am just setting them to
+        # be nice values :)
+        # T[0,0], T[0,-1], T[-1,0], T[-1,-1] = T[1,1], T[1,-2], T[-2,1], T[-2,-2]
+
+        if (t % plot_every) == 0:
+            print(T[:,-1])
+            fig = plt.figure(figsize=(12,6))
+            ax = fig.gca(projection='3d')
+            surface = ax.plot_surface(x, y, T)
+            ax.set_xlabel('x')
+            ax.set_ylabel('y')
+            ax.set_title(f'RBF solution')
+            plt.show()
+
+    return
+
+def sarler_second_test(time_step=1.0e-4, num_steps=50, plot_every=20, trunc=50, diff=None, shape_param=16):
+    # second test
+    x_min, x_max = 0.0, 1.0
+    y_min, y_max = 0.0, 1.0
+
+    if diff is None:
+        rho, param_c, k = 1, 1, 1
+        diffusivity = k / (rho * param_c)
+    else:
+        diffusivity = diff
 
     # test 2
     boundary_conditions = {"North": ("Dirichlet", (0, None)), "East": ("Dirichlet", (0, None)),
                             "South": ("Neumann", (0, None)), "West": ("Neumann", (0, None))}
 
     grid_dist = 0.025
-    # time_step = 0.01 # change
-    # num_steps = 100000
 
     x_line = np.arange(x_min, x_max + grid_dist, grid_dist)
     y_line = np.arange(y_min, y_max + grid_dist, grid_dist)
@@ -47,8 +88,6 @@ def sarler_second_test(time_step=1.0e-4, num_steps=50, plot_every=20, trunc=50, 
                 # ie. the opposite of the intuitive picture - need to reverse this
                 # decide whether to do this here or just remember how it works and change the
                 # boundary conditions implementation
-
-    # x_idx, y_idx = plot_indices_excl_corners(x_line.size, y_line.size)
 
     # Initial condition
     T = np.ones_like(x, dtype=np.float64)
@@ -69,17 +108,17 @@ def sarler_second_test(time_step=1.0e-4, num_steps=50, plot_every=20, trunc=50, 
         if (t % plot_every) == 0:
             fig = plt.figure(figsize=(12,6))
             ax = fig.add_subplot(1, 2, 1, projection="3d")
-            surface = ax.plot_surface(x, y, T, linewidth=0, antialiased=False)
+            surface = ax.plot_surface(x, y, T)
             ax.set_xlabel('x')
             ax.set_ylabel('y')
             ax.set_title(f'RBF solution')
 
-            trunc_sol = sarler_second_case_analytical(x, y, t*time_step, diffusivity, trunc=trunc)
+            trunc_sol = sarler_second_test_analytical(x, y, t*time_step, diffusivity, trunc=trunc)
             ax = fig.add_subplot(1, 2, 2, projection="3d")
             surface = ax.plot_surface(x, y, trunc_sol)
             ax.set_xlabel('x')
             ax.set_ylabel('y')
-            ax.set_title(f'Truncated analytical solutiones')
+            ax.set_title(f'Analytical Solution (Truncated)')
             plt.show()
 
     return
@@ -158,7 +197,7 @@ def gaussian_inf_domain_plot(time_step=0.001, x_min=-6, x_max=6, y_min=-6,
     plt.show()
 
 
-def sarler_second_case_analytical(x, y, t, diff, trunc=50, dist=1):
+def sarler_second_test_analytical(x, y, t, diff, trunc=50, dist=1):
     """
     Returns the truncated analytical solution described in the second test of
     the Sarler paper.
@@ -171,8 +210,8 @@ def sarler_second_case_analytical(x, y, t, diff, trunc=50, dist=1):
 
     for i in range(m):
         for j in range(n):
-            x_terms = sarler_second_case_nth(x[i,j], t, diff, dist, term_idx)
-            y_terms = sarler_second_case_nth(y[i,j], t, diff, dist, term_idx)
+            x_terms = sarler_second_test_nth(x[i,j], t, diff, dist, term_idx)
+            y_terms = sarler_second_test_nth(y[i,j], t, diff, dist, term_idx)
             sum_x = 4 * np.sum(x_terms) / np.pi
             sum_y = 4 * np.sum(y_terms) / np.pi
 
