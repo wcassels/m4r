@@ -43,7 +43,7 @@ def sarler_first_test(time_step=1.0e-4, num_steps=50, plot_every=20, shape_param
     update_weights = unif_utils.get_update_weights(Phi, diffusivity, time_step, grid_dist, shape_param)
 
     for t in range(1, num_steps+1):
-        solve_grid.grid_step(T, update_weights, grid_dist, shape_param, boundary_conditions)
+        solve_grid.grid_step(T, update_weights, grid_dist, shape_param, boundary_conditions, boundary_method=solve_grid.unif_boundary)
         # Corner values are not computed. They also have no influence on future calculations
         # so until I figure out how to do 3D plots without them, I am just setting them to
         # be nice values :)
@@ -98,7 +98,7 @@ def second_test_comparison(time_step=1.0e-4, num_steps=50, plot_every=20, trunc=
     update_weights = unif_utils.get_update_weights(Phi, diffusivity, time_step, grid_dist, shape_param)
 
     for t in range(1, num_steps+1):
-        solve_grid.grid_step(T, update_weights, grid_dist, shape_param, boundary_conditions)
+        solve_grid.grid_step(T, update_weights, grid_dist, shape_param, boundary_conditions, boundary_method=solve_grid.unif_boundary)
         # Corner values are not computed. They also have no influence on future calculations
         # so until I figure out how to do 3D plots without them, I am just setting them to
         # be nice values :)
@@ -113,6 +113,7 @@ def second_test_comparison(time_step=1.0e-4, num_steps=50, plot_every=20, trunc=
             ax.set_title(f'RBF solution')
 
             trunc_sol = sarler_second_test_analytical(x, y, t*time_step, diffusivity, trunc=trunc)
+            print(np.max(np.abs(T-trunc_sol)))
             ax = fig.add_subplot(1, 2, 2, projection="3d")
             surface = ax.plot_surface(x, y, trunc_sol)
             ax.set_xlabel('x')
@@ -175,7 +176,7 @@ def first_test_NAFEMs_convergence(time_step=1, convergence_crit=1.0e-6, diff=Non
         T = np.zeros_like(x, dtype=np.float64)
 
         for t in range(1, max_steps+1):
-            T_new = solve_grid.grid_step(T.copy(), update_weights, grid_dist, c, boundary_conditions)
+            T_new = solve_grid.grid_step(T.copy(), update_weights, grid_dist, c, boundary_conditions, boundary_method=solve_grid.unif_boundary)
 
             NAFEMS_vals[t,i] = T[-11,-1] # Hard coded to grid_dist=0.02
             print(np.max(np.abs(T_new-T)))

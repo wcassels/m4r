@@ -32,6 +32,61 @@ def domain_increment(A, weighted_phi):
     return combined_2nd_deriv
 
 
+def unif_boundary(A, condition, edge, val, c, grid_dist, robin_ref=0):
+    """
+    Fast boundary implementation for uniform grid solutions
+    """
+    if condition == "Dirichlet":
+        if edge == "North":
+            A[0] = val
+        elif edge == "East":
+            A[:,-1] = val
+        elif edge == "West":
+            A[:,0] = val
+        elif edge == "South":
+            A[-1] = val
+        else:
+            raise ValueError("Invalid boundary selected")
+
+        return
+    else:
+        if condition == "Neumann":
+            Phi_boundary = unif_utils.get_Phi_Neumann(c, grid_dist)
+            rhs0 = val
+        elif condition == "Robin":
+            Phi_boundary = unif_utils.get_Phi_Robin(c, grid_dist, val)
+            rhs0 = -val * robin_ref
+        else:
+            raise ValueError("Invalid boundary condition selected")
+
+        phi_vec = np.sqrt(np.arange(5)**2 + (c**2)*16) * grid_dist
+
+        update_weights = np.linalg.solve(Phi_boundary.T, phi_vec)
+
+
+        if edge == "North":
+            infl_matrix = A[:5,1:-1].T
+            infl_matrix[:,0] = rhs0
+            A[0,1:-1] = infl_matrix.dot(update_weights)
+        elif edge == "South":
+            infl_matrix = A[-5:,1:-1][::-1].T
+            infl_matrix[:,0] = rhs0
+            A[-1,1:-1] = infl_matrix.dot(update_weights)
+        elif edge == "West":
+            infl_matrix = A[1:-1,:5]
+            infl_matrix[:,0] = rhs0
+            A[1:-1,0] = infl_matrix.dot(update_weights)
+        elif edge == "East":
+            infl_matrix = A[1:-1,-5:][:,::-1]
+            infl_matrix[:,0] = rhs0
+            A[1:-1,-1] = infl_matrix.dot(update_weights)
+        else:
+            raise ValueError("Invalid boundary selected")
+
+        return
+
+
+
 def set_boundary(A, condition, edge, val, c, grid_dist, robin_ref=0):
     """
     Compute the boundary values of the rectangle using boundary conditions provided
@@ -79,10 +134,6 @@ def set_boundary(A, condition, edge, val, c, grid_dist, robin_ref=0):
             # Update_weights method
             A[boundary_idx(i)] = Neumann_update_weights.dot(rhs)
 
-            # Neumann testing
-            # deriv_vec = np.arange(5) / np.sqrt(np.arange(5)**2 + 16*(c**2))
-            # print(alphas.dot(deriv_vec))
-
         return
 
     elif condition == "Robin":
@@ -125,12 +176,14 @@ def step_domain(T, update_weights):
     return T[1:-1,1:-1]
 
 
-def grid_step(T, update_weights, grid_dist, c, boundary_conditions):
+def grid_step(T, update_weights, grid_dist, c, boundary_conditions, boundary_method=set_boundary):
     """
     Step forwards using step_domain to compute values at domain nodes then
     applies boundary conditions
 
     Boundary conditions - a dictionary with entries {"Edge": ("Condition", value)}
+
+    bounary_method: the function to use to solve the boundary conditions.
     """
     # Update domain nodes
     step_domain(T, update_weights)
@@ -139,8 +192,8 @@ def grid_step(T, update_weights, grid_dist, c, boundary_conditions):
     for edge, (condition, value) in boundary_conditions.items():
         if condition == "Robin":
             # Robin boundaries have two parameters
-            set_boundary(T, condition, edge, value[0], c, grid_dist, robin_ref=value[1])
+            boundary_method(T, condition, edge, value[0], c, grid_dist, robin_ref=value[1])
         else:
-            set_boundary(T, condition, edge, value[0], c, grid_dist)
+            boundary_method(T, condition, edge, value[0], c, grid_dist)
 
     return T
