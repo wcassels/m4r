@@ -128,10 +128,12 @@ def get_Phi_Robin(c, grid_dist, condition_value):
     cr_0_sq = (c**2) * 16
 
     # Neumann boundary condition row
-    for j in range(5):
-        Phi_Robin[0,j] = j / np.sqrt(j**2 + cr_0_sq)
+    # for j in range(5):
+    #     Phi_Robin[0,j] = j / np.sqrt(j**2 + cr_0_sq)
 
-    Phi_Robin[0] -= condition_value * np.sqrt(np.arange(5)**2 + cr_0_sq) * grid_dist
+    # Row enforcing Robin condition
+    Phi_Robin[0] = np.arange(5) / np.sqrt(np.arange(5)**2 + cr_0_sq) - \
+                   condition_value * np.sqrt(np.arange(5)**2 + cr_0_sq) * grid_dist
 
     # Other rows
     for i in range(1, 5):

@@ -118,6 +118,8 @@ def second_test_comparison(time_step=1.0e-4, num_steps=50, plot_every=20, trunc=
             ax.set_xlabel('x')
             ax.set_ylabel('y')
             ax.set_title(f'Analytical Solution (Truncated)')
+
+            plt.tight_layout()
             plt.show()
 
     return
@@ -176,7 +178,6 @@ def first_test_NAFEMs_convergence(time_step=1, convergence_crit=1.0e-6, diff=Non
             T_new = solve_grid.grid_step(T.copy(), update_weights, grid_dist, c, boundary_conditions)
 
             NAFEMS_vals[t,i] = T[-11,-1] # Hard coded to grid_dist=0.02
-            # if abs(NAFEMS_vals[t] - NAFEMS_vals[t-1]) < convergence_crit:
             print(np.max(np.abs(T_new-T)))
             if np.max(np.abs(T_new - T)) <= convergence_crit:
                 max_t = max(t, max_t)
