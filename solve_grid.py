@@ -64,13 +64,20 @@ def set_boundary(A, condition, edge, val, c, grid_dist, robin_ref=0):
 
         boundary_idx = unif_utils.get_boundary_positions(edge)
 
+        Neumann_update_weights = np.linalg.solve(Phi_Neumann.T, phi_vec)
+
         # Exclude corners for now (or permanently? paper seemingly does not do corners.)
         for i in range(1, mn-1):
             neighbourhood_x, neighbourhood_y = unif_utils.get_boundary_neighbourhood(edge, i)
             rhs = A[neighbourhood_x, neighbourhood_y]
             rhs[0] = val
-            alphas = np.linalg.solve(Phi_Neumann, rhs)
-            A[boundary_idx(i)] = alphas.dot(phi_vec)
+
+            # More general method, slower
+            # alphas = np.linalg.solve(Phi_Neumann, rhs)
+            # A[boundary_idx(i)] = alphas.dot(phi_vec)
+
+            # Update_weights method
+            A[boundary_idx(i)] = Neumann_update_weights.dot(rhs)
 
             # Neumann testing
             # deriv_vec = np.arange(5) / np.sqrt(np.arange(5)**2 + 16*(c**2))
@@ -85,13 +92,18 @@ def set_boundary(A, condition, edge, val, c, grid_dist, robin_ref=0):
 
         boundary_idx = unif_utils.get_boundary_positions(edge)
 
+        Robin_update_weights = np.linalg.solve(Phi_Robin.T, phi_vec)
+
         for i in range(1, mn-1):
             rhs = A[unif_utils.get_boundary_neighbourhood(edge, i)]
             rhs[0] = -val * robin_ref
-            alphas = np.linalg.solve(Phi_Robin, rhs)
-            A[boundary_idx(i)] = alphas.dot(phi_vec)
 
-            # ROBIN TESTING
+            # More general method, slower
+            # alphas = np.linalg.solve(Phi_Robin, rhs)
+            # A[boundary_idx(i)] = alphas.dot(phi_vec)
+
+            # Update_weights method
+            A[boundary_idx(i)] = Robin_update_weights.dot(rhs)
 
         return
 

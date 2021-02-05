@@ -11,22 +11,19 @@ import solve_grid
 import unif_utils
 
 
-def sarler_first_test(time_step=1.0e-4, num_steps=50, plot_every=20, diff=None, shape_param=4):
+def sarler_first_test(time_step=1.0e-4, num_steps=50, plot_every=20, shape_param=4):
     x_min, x_max = 0.0, 0.6
     y_min, y_max = 0.0, 1.0
 
-    if diff is None:
-        # rho, param_c, k = 7850, 460, 52
-        rho, param_c, k = 7850, 460, 52
-        diffusivity = k / (rho * param_c)
-    else:
-        diffusivity = diff
+    # Diffusivity as described in the first test
+    rho, param_c, k = 7850, 460, 52
+    diffusivity = k / (rho * param_c)
 
     # test 1
     boundary_conditions = {"North": ("Robin", (-750/k, 0)), "East": ("Robin", (-750/k, 0)),
                            "South": ("Dirichlet", (100, None)), "West": ("Neumann", (0, None))}
 
-    # second example
+    # second grid layout
     grid_dist = 0.02
 
     x_line = np.arange(x_min, x_max + grid_dist, grid_dist)
@@ -53,7 +50,7 @@ def sarler_first_test(time_step=1.0e-4, num_steps=50, plot_every=20, diff=None, 
         # T[0,0], T[0,-1], T[-1,0], T[-1,-1] = T[1,1], T[1,-2], T[-2,1], T[-2,-2]
 
         if (t % plot_every) == 0:
-            print(T[:,-1])
+            print(T[-11,-1])
             fig = plt.figure(figsize=(12,6))
             ax = fig.gca(projection='3d')
             surface = ax.plot_surface(x, y, T)
@@ -64,16 +61,18 @@ def sarler_first_test(time_step=1.0e-4, num_steps=50, plot_every=20, diff=None, 
 
     return
 
-def sarler_second_test(time_step=1.0e-4, num_steps=50, plot_every=20, trunc=50, diff=None, shape_param=16):
+def second_test_comparison(time_step=1.0e-4, num_steps=50, plot_every=20, trunc=50, shape_param=4):
+    """
+    Allows for comparison of the RBF and analytical solutions as we step forward in time.
+    """
     # second test
     x_min, x_max = 0.0, 1.0
     y_min, y_max = 0.0, 1.0
 
-    if diff is None:
-        rho, param_c, k = 1, 1, 1
-        diffusivity = k / (rho * param_c)
-    else:
-        diffusivity = diff
+    # Diffusivity as described in the second test
+    rho, param_c, k = 1.0, 1.0, 1.0
+    diffusivity = k / (rho * param_c)
+
 
     # test 2
     boundary_conditions = {"North": ("Dirichlet", (0, None)), "East": ("Dirichlet", (0, None)),
@@ -122,6 +121,78 @@ def sarler_second_test(time_step=1.0e-4, num_steps=50, plot_every=20, trunc=50, 
             plt.show()
 
     return
+
+
+def first_test_NAFEMs_convergence(time_step=1, convergence_crit=1.0e-6, diff=None, max_steps=10000):
+    """
+    Plots evolution of value at (0.6, 0.2), referenced in the Sarler paper.
+    Continues until the value has convergenced according to provided convergence
+    criterion
+    """
+    # Rounded 8 digit analytical solution at equilibrium
+    LIMIT = 18.253756
+
+    x_min, x_max = 0.0, 0.6
+    y_min, y_max = 0.0, 1.0
+
+    # Diffusivity as described in the first test
+    rho, param_c, k = 7850, 460, 52
+    diffusivity = k / (rho * param_c)
+
+    # test 1
+    boundary_conditions = {"North": ("Robin", (-750/k, 0)), "East": ("Robin", (-750/k, 0)),
+                           "South": ("Dirichlet", (100, None)), "West": ("Neumann", (0, None))}
+
+    # second grid layout
+    grid_dist = 0.02
+
+    x_line = np.arange(x_min, x_max + grid_dist, grid_dist)
+    y_line = np.arange(y_min, y_max + grid_dist, grid_dist)
+    x, y = np.meshgrid(x_line, y_line)
+    y = y[::-1]
+
+    # Initial condition according to
+    # https://www.compassis.com/downloads/Manuals/Validation/Tdyn-ValTest7-Thermal_conductivity_in_a_solid.pdf
+    # (omitted in Sarler paper)
+    T = np.zeros_like(x, dtype=np.float64)
+
+
+
+    cs = np.array([4, 8, 16, 32])
+
+    NAFEMS_vals = np.zeros((max_steps+1, cs.size), dtype=np.float64)
+    max_t = 0
+
+    for i, c in enumerate(cs):
+        # Get the collocation matrix
+        Phi = unif_utils.get_Phi(5, c)
+
+        # Get simplified update weights - only works for uniform configuration!
+        update_weights = unif_utils.get_update_weights(Phi, diffusivity, time_step, grid_dist, c)
+
+        T = np.zeros_like(x, dtype=np.float64)
+
+        for t in range(1, max_steps+1):
+            T_new = solve_grid.grid_step(T.copy(), update_weights, grid_dist, c, boundary_conditions)
+
+            NAFEMS_vals[t,i] = T[-11,-1] # Hard coded to grid_dist=0.02
+            # if abs(NAFEMS_vals[t] - NAFEMS_vals[t-1]) < convergence_crit:
+            print(np.max(np.abs(T_new-T)))
+            if np.max(np.abs(T_new - T)) <= convergence_crit:
+                max_t = max(t, max_t)
+                NAFEMS_vals[t:,i] = NAFEMS_vals[t,i]
+                break
+
+            T = T_new
+
+    plt.plot(range(max_t+1), NAFEMS_vals[:max_t+1])
+
+    plt.xlabel("Number of steps")
+    plt.ylabel("Value")
+    plt.title("Second BVP: Value of node at (0.6, 0.2) over time")
+    plt.legend([f"c={c}" for c in cs])
+    plt.axhline(LIMIT, c='r', linestyle='--')
+    plt.show()
 
 
 def gauss_inf_domain_errs(diffusivity, time_step, x_min, x_max, y_min,
