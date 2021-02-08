@@ -16,9 +16,8 @@ def get_update_weights(positions, c):
             / ((dist_mat_sq[0] + cr_0_sq) ** 1.5))
 
 
-def neighbours_and_update_weights(domain_positions, time_step, diffusivity):
+def setup_neighbours_and_update_weights(domain_positions, time_step, diffusivity, c):
     """
-    Not sure if will work but:
     Given an array of node positions stored in complex form x+iy, returns:
     - a 5xn_points matrix with nth column containing the indexes of node n's
     - neighbours,
@@ -38,5 +37,5 @@ def neighbours_and_update_weights(domain_positions, time_step, diffusivity):
         neighbourhood_idx[:,i] = idx
         update_weights[:,i] = get_update_weights(neigh_pos, c)
 
-    # Remember to scale the update weights by times_step and diffusivity
+    # Remember to scale the update weights by time_step and diffusivity
     return neighbourhood_idx, update_weights * time_step * diffusivity
