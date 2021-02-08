@@ -1,29 +1,22 @@
 """
-Methods for solving on a general (not necessarily uniform or rectangular) domain
+Methods for solving on a general domain
 """
 
 import numpy as np
 
-def sum_2nd_derivs(dists, c, r0):
+def get_update_weights(positions, c):
     """
-    Returns the vector of the sum of the second derivates, evaluated using the
-    distances provided
+    Given a vector of complex-valued node positions (relative to the centre node),
+    get the vector of heat equation update weights for that neighbourhood
     """
-    cr_0_sq = (c*r0)**2
+    dist_mat_sq = np.abs(positions - positions[:,np.newaxis]) ** 2
+    cr_0_sq = np.max(dist_mat_sq) * (c ** 2)
 
-    # This is how it simplifies
-    return (d**2 + 2*cr_0_sq) / ((d**2 + cr_0_sq)**1.5)
-
-
-def Phi(positions, c, r0):
-    """
-    Returns the collocation matrix Phi given neighbour positions relative to the central node
-    """
-
-    return np.sqrt(np.abs(positions - positions[:,np.newaxis]) ** 2 + (c*r0)**2)
+    return np.linalg.solve(np.sqrt(dist_mat_sq + cr_0_sq).T, (dist_mat_sq[0] + 2*cr_0_sq) \
+            / ((dist_mat_sq[0] + cr_0_sq) ** 1.5))
 
 
-def neighbours_and_update_weights(domain_positions):
+def neighbours_and_update_weights(domain_positions, time_step, diffusivity):
     """
     Not sure if will work but:
     Given an array of node positions stored in complex form x+iy, returns:
@@ -38,14 +31,12 @@ def neighbours_and_update_weights(domain_positions):
     N = 5
 
     for i in range(domain_positions.size):
-        rel_positions = domain_positions-domain_positions[i]
-        idx = np.abs(rel_positions).argsort()[:N]
-        neigh_pos = rel_positions[idx]
-
-        r0 = np.max(np.abs(rel_positions))
+        rel_pos = domain_positions-domain_positions[i]
+        idx = np.abs(rel_pos).argsort()[:N]
+        neigh_pos = rel_pos[idx]
 
         neighbourhood_idx[:,i] = idx
-        update_weights[:,i] = np.linalg.solve(Phi(neigh_pos, c, r0), sum_2nd_derivs(neighbourhood_distances, c, r0))
+        update_weights[:,i] = get_update_weights(neigh_pos, c)
 
-
-    return neighbourhood_idx, update_weights
+    # Remember to scale the update weights by times_step and diffusivity
+    return neighbourhood_idx, update_weights * time_step * diffusivity
