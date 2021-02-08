@@ -63,7 +63,6 @@ def unif_boundary(A, condition, edge, val, c, grid_dist, robin_ref=0):
 
         update_weights = np.linalg.solve(Phi_boundary.T, phi_vec)
 
-
         if edge == "North":
             infl_matrix = A[:5,1:-1].T
             infl_matrix[:,0] = rhs0

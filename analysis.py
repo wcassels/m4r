@@ -120,8 +120,63 @@ def second_test_comparison(time_step=1.0e-4, num_steps=50, plot_every=20, trunc=
             ax.set_ylabel('y')
             ax.set_title(f'Analytical Solution (Truncated)')
 
+            plt.suptitle(f"Comparison after {t} time steps (Δt={time_step})")
             plt.tight_layout()
             plt.show()
+
+    return
+
+
+def second_test_avg_errs(time_step=1.0e-4, num_steps=50, trunc=50, shape_param=4):
+    # second test
+    x_min, x_max = 0.0, 1.0
+    y_min, y_max = 0.0, 1.0
+
+    # Diffusivity as described in the second test
+    rho, param_c, k = 1.0, 1.0, 1.0
+    diffusivity = k / (rho * param_c)
+
+
+    # test 2
+    boundary_conditions = {"North": ("Dirichlet", (0, None)), "East": ("Dirichlet", (0, None)),
+                            "South": ("Neumann", (0, None)), "West": ("Neumann", (0, None))}
+
+    grid_dist = 0.025
+
+    x_line = np.arange(x_min, x_max + grid_dist, grid_dist)
+    y_line = np.arange(y_min, y_max + grid_dist, grid_dist)
+    x, y = np.meshgrid(x_line, y_line)
+    y = y[::-1] # by default meshgrid returns a y that increases going down the matrix
+                # ie. the opposite of the intuitive picture - need to reverse this
+                # decide whether to do this here or just remember how it works and change the
+                # boundary conditions implementation
+
+    # Initial condition
+    T = np.ones_like(x, dtype=np.float64)
+
+    # Get the collocation matrix
+    Phi = unif_utils.get_Phi(5, shape_param)
+
+    # Get simplified update weights - only works for uniform configuration!
+    update_weights = unif_utils.get_update_weights(Phi, diffusivity, time_step, grid_dist, shape_param)
+
+    errs = np.zeros(num_steps+1, dtype=np.float64)
+
+    for t in range(1, num_steps+1):
+        solve_grid.grid_step(T, update_weights, grid_dist, shape_param, boundary_conditions, boundary_method=solve_grid.unif_boundary)
+
+        trunc_sol = sarler_second_test_analytical(x, y, t*time_step, diffusivity, trunc=trunc)
+
+        # Correct corners - this has no effect on RBF solution marching
+        T[0,0], T[0,-1], T[-1,0], T[-1,-1] = trunc_sol[0,0], trunc_sol[0,-1], trunc_sol[-1,0], trunc_sol[-1,-1]
+
+        errs[t] = np.mean(np.abs(T-trunc_sol))
+
+    plt.plot(range(num_steps+1), errs)
+    plt.xlabel("Time steps")
+    plt.ylabel("Error")
+    plt.title(f"Average solution error (Δt={time_step})")
+    plt.show()
 
     return
 
@@ -159,12 +214,9 @@ def first_test_NAFEMs_convergence(time_step=1, convergence_crit=1.0e-6, diff=Non
     # (omitted in Sarler paper)
     T = np.zeros_like(x, dtype=np.float64)
 
-
-
     cs = np.array([4, 8, 16, 32])
-
-    NAFEMS_vals = np.zeros((max_steps+1, cs.size), dtype=np.float64)
-    max_t = 0
+    converged_vals = np.zeros_like(cs, dtype=np.float64)
+    convergence_times = np.zeros_like(cs, dtype=np.float64)
 
     for i, c in enumerate(cs):
         # Get the collocation matrix
@@ -178,21 +230,23 @@ def first_test_NAFEMs_convergence(time_step=1, convergence_crit=1.0e-6, diff=Non
         for t in range(1, max_steps+1):
             T_new = solve_grid.grid_step(T.copy(), update_weights, grid_dist, c, boundary_conditions, boundary_method=solve_grid.unif_boundary)
 
-            NAFEMS_vals[t,i] = T[-11,-1] # Hard coded to grid_dist=0.02
             print(np.max(np.abs(T_new-T)))
             if np.max(np.abs(T_new - T)) <= convergence_crit:
-                max_t = max(t, max_t)
-                NAFEMS_vals[t:,i] = NAFEMS_vals[t,i]
+                convergence_times[i] = t
+                converged_vals[i] = T_new[-11,-1]
                 break
 
             T = T_new
 
-    plt.plot(range(max_t+1), NAFEMS_vals[:max_t+1])
+    print(converged_vals)
+    print(convergence_times)
+
+    plt.scatter(cs, converged_vals)
 
     plt.xlabel("Number of steps")
     plt.ylabel("Value")
-    plt.title("Second BVP: Value of node at (0.6, 0.2) over time")
-    plt.legend([f"c={c}" for c in cs])
+    plt.title("Conergence value of node at (0.6, 0.2) against shape parameter")
+    plt.legend()
     plt.axhline(LIMIT, c='r', linestyle='--')
     plt.show()
 
