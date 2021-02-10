@@ -16,7 +16,7 @@ def domain_update_weights(positions, time_step, diffusivity, c):
             / ((dist_mat_sq[0] + cr_0_sq) ** 1.5)) * time_step * diffusivity
 
 
-def setup_neighbours_and_update_weights(positions, labels, boundary_vals, time_step, diffusivity, c):
+def general_setup(positions, labels, boundary_vals, time_step, diffusivity, c):
     """
     Given an array of node positions stored in complex form x+iy, returns:
     - a 5xn_points matrix with nth column containing the indexes of node n's
@@ -24,6 +24,9 @@ def setup_neighbours_and_update_weights(positions, labels, boundary_vals, time_s
     - a 5xn_points matrix with nth column containing either:
         (i) The update weights for a domain node
         (ii) The relative neighbourhood node positions for a boundary node
+    - a n_points length list with entries
+        (i) None - domain node
+        (ii) Some function that encodes the derivative in the normal direction to the boundary
 
     Arguments:
     - positions: array of positions stored in complex form x+iy
@@ -33,14 +36,15 @@ def setup_neighbours_and_update_weights(positions, labels, boundary_vals, time_s
               * "D" - Dirichlet boundary node with value d
               * "N" - Neumann boundary node with value n
               * "R" - Robin boundary node with value r and reference ref
-    - boundary_vals: an equally sizzed array with boundary values for corresponding nodes.
+    - boundary_vals: an equally sized array with boundary values for corresponding nodes.
               entries are one of
               * None - domain node
-              * k - Dirichlet or Neumann value
+              * (k - Dirichlet or Neumann value
               * (k, ref) - Robin value and reference
     """
     neighbourhood_idx = np.zeros((5, positions.size), dtype=int)
     update_info = np.zeros_like(neighbourhood_idx, dtype=np.float64)
+    normal_funcs = [None] * positions.size
 
     N = 5
 
@@ -72,28 +76,52 @@ def setup_neighbours_and_update_weights(positions, labels, boundary_vals, time_s
 
             rel_pos = possible_neighbours - centre_pos
             idx = np.abs(rel_pos).argsort()[:N-1] # since the centre node is not contained in this array
-            neigh_pos = rel_pos[idx]
-
-            neighbourhood_labs = labels[idx]
-            neighbourhood_vals = boundary_vals[idx]
 
             neighbourhood_idx[0,i] = i
             neighbourhood_idx[1:,i] = idx
 
             # For boundary nodes we unfortunately cannot use the update weights
             # method due to robin boundary conditions depending on T
-            # so instead we use this space to store relative neighbourhood node positions
+            # so instead we use this space to store ABSOLUTE neighbourhood node positions
             update_info[0,i] = 0
-            update_info[1:,i] = rel_pos[idx]
+            update_info[1:,i] = positions[idx]
 
 
     return neighbourhood_idx, update_info
 
 
-def solve_boundary_node(T, rel_pos, labels, vals, time_step, diffusivity, c):
+def solve_boundary_node(T, positions, labels, vals, time_step, diffusivity, c):
     """
     Compute the new value at a (non-Dirichlet) boundary node
     """
+    rel_pos = positions - positions[0]
+    dist_mat_sq = np.abs(rel_pos - rel_pos[:,np.newaxis]) ** 2
+    cr_0_sq = np.max(dist_mat_sq) * (c ** 2)
+
+    # Collocation matrix, each row of which enforces one condition on weights alpha
+    Phi = np.sqrt(dist_mat_sq + cr_0_sq)
+
+    # initialise rhs vector b as T
+    b = T
+
+    # now override rows in Phi and entries in b that correspond to boundary nodes
+    # current problem: need to encode direction of normal - gonna use a lambda function
+    for i in range(5):
+        if (label := labels[i]) is not None:
+            if label == "D":
+                b[i] = vals[i]
+            elif label == "N":
+
+                b[i] = vals[i]
+
+            elif label == "R":
+                b[i] = - vals[i][0] * vals[i][1]
+
+            else:
+                raise ValueError("Invalid boundary label")
+
+    return
+
 
 def general_step(T_vec, update_info, neighbourhood_idx, labels, boundary_vals, time_step, diffusivity, c):
     """
@@ -114,6 +142,6 @@ def general_step(T_vec, update_info, neighbourhood_idx, labels, boundary_vals, t
                 neighbourhood_labels = labels[neighbourhood_idx[:,i]]
                 neighbourhood_vals = boundary_vals[neighbourhood_idx[:,i]]
                 neighbourhood_T = T_vec[neighbourhood_idx[:,i]]
-                rel_pos = update_info[:,i]
+                positions = update_info[:,i]
 
-                T_vec[i] = solve_boundary_node(neighbourhood_T, rel_pos, neighbourhood_labels, neighbourhood_vals, time_step, diffusivity, c)
+                T_vec[i] = solve_boundary_node(neighbourhood_T, positions, neighbourhood_labels, neighbourhood_vals, time_step, diffusivity, c)
