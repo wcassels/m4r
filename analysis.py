@@ -6,9 +6,11 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.pyplot import cm
 import time
+from scipy.optimize import fsolve
 
 import solve_grid
 import unif_utils
+import general_utils
 
 
 def sarler_first_test(time_step=1.0e-4, num_steps=50, plot_every=20, shape_param=4):
@@ -36,21 +38,15 @@ def sarler_first_test(time_step=1.0e-4, num_steps=50, plot_every=20, shape_param
     # (seemingly omitted in Sarler paper)
     T = np.zeros_like(x, dtype=np.float64)
 
-    # Get the collocation matrix
-    Phi = unif_utils.get_Phi(5, shape_param)
-
-    # Get simplified update weights - only works for uniform configuration!
-    update_weights = unif_utils.get_update_weights(Phi, diffusivity, time_step, grid_dist, shape_param)
+    # lazily chose points in any order because with uniform x/y grid_dist this doesn't matter,
+    # but if testing cases where \Delta x != \Delta y, this requires more caution
+    update_weights = general_utils.domain_update_weights(np.array([0, grid_dist, -grid_dist, grid_dist*1j, -grid_dist*1j]), time_step, diffusivity, shape_param)
 
     for t in range(1, num_steps+1):
         solve_grid.grid_step(T, update_weights, grid_dist, shape_param, boundary_conditions, boundary_method=solve_grid.unif_boundary)
-        # Corner values are not computed. They also have no influence on future calculations
-        # so until I figure out how to do 3D plots without them, I am just setting them to
-        # be nice values :)
-        # T[0,0], T[0,-1], T[-1,0], T[-1,-1] = T[1,1], T[1,-2], T[-2,1], T[-2,-2]
 
         if (t % plot_every) == 0:
-            print(T[-11,-1])
+            print(f"NAFEMs convergence val: {T[-11,-1]}")
             fig = plt.figure(figsize=(12,6))
             ax = fig.gca(projection='3d')
             surface = ax.plot_surface(x, y, T)
@@ -322,6 +318,22 @@ def gaussian_inf_domain_plot(time_step=0.001, x_min=-6, x_max=6, y_min=-6,
     plt.ylabel("Avg abs error (log10 scale)")
 
     plt.show()
+
+
+def sarler_first_test_analytical(x, y, h=750, k=52, trunc=50):
+    """
+    Returns the truncated analytical convergence solution described in the first
+    test of the Sarler paper.
+    """
+    R = -h / k
+    f = lambda x: x*np.tan(0.6*x) + R
+    # hacky way of getting betas - work on something more precise?
+    betas = fsolve(f, 2.34+5*np.arange(trunc))
+
+    # Both papers are slightly wrong!
+    return -2 * 100 * R * np.sum(np.cos(betas*x) * (betas*np.cosh(betas*(1-y)) - \
+        R * np.sinh(betas*(1-y))) / (np.cos(betas*0.6)*(betas*np.cosh(betas) - R * \
+        np.sinh(betas)) * (0.6*(R**2 + betas**2) - R)))
 
 
 def sarler_second_test_analytical(x, y, t, diff, trunc=50, dist=1):
