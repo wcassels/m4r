@@ -1,3 +1,5 @@
+import numpy as np
+
 def cartesian(centre_pos, positions, c, axis, direction):
     """
     Function to evaluate the derivative with respect to x or y at a boundary
@@ -11,7 +13,7 @@ def cartesian(centre_pos, positions, c, axis, direction):
     """
     rel_pos = positions - centre_pos
     distances = np.abs(rel_pos)
-    cr_0_sq = np.max(distances) * (c ** 2)
+    cr_0_sq = (np.max(distances) * c) ** 2
 
     if axis == "x":
         diff = (positions.real - centre_pos.real)
