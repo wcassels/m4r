@@ -100,21 +100,13 @@ def general_setup(positions, labels, boundary_vals, time_step, diffusivity, c):
     return neighbourhood_idx, update_info
 
 
-def solve_boundary_node(T, positions, labels, vals, normal_derivs, c, p=False):
+def solve_boundary_node(T, positions, labels, vals, normal_derivs, c):
     """
     Compute the new value at a (non-Dirichlet) boundary node
     """
     rel_pos = positions - positions[0]
     dist_mat_sq = np.abs(rel_pos - rel_pos[:,np.newaxis]) ** 2
     cr_0_sq = np.max(dist_mat_sq) * (c ** 2)
-
-    if p:
-        print("rel pos")
-        print(rel_pos)
-        print("dms")
-        print(dist_mat_sq)
-        print("cr_0_sq")
-        print(cr_0_sq)
 
     # Collocation matrix, each row of which enforces one condition on weights alpha
     Phi = np.sqrt(dist_mat_sq + cr_0_sq)
@@ -126,7 +118,6 @@ def solve_boundary_node(T, positions, labels, vals, normal_derivs, c, p=False):
     b = T
 
     # now override rows in Phi and entries in b that correspond to boundary nodes
-    # current problem: need to encode direction of normal - gonna use a lambda function
     for i in range(5):
         if (label := labels[i]) is not None:
             if label == "D":
@@ -143,19 +134,6 @@ def solve_boundary_node(T, positions, labels, vals, normal_derivs, c, p=False):
             else:
                 raise ValueError("Invalid boundary label")
 
-    if p:
-        print(Phi)
-        print(b)
-        print(phi_vec)
-
-        t = np.linalg.solve(Phi, b)
-        w = np.linalg.solve(Phi.T, phi_vec)
-        print(t)
-        print(w)
-        print(t.dot(phi_vec))
-        print(w.dot(b))
-        input()
-
     return np.linalg.solve(Phi, b).dot(phi_vec)
 
 
@@ -163,32 +141,17 @@ def general_step(T_vec, update_info, neighbourhood_idx, labels, boundary_vals, d
     """
     Updates all (domain + boundary) nodes to their values at the next time step
     """
-    # do something more efficient in future here with indexing
-    boundary_idx_list = []
+    domain_idx = np.where(labels == None)[0]
+    boundary_idx = np.where(labels != None)[0]
 
     T_old = T_vec.copy()
-    for i in range(T_vec.size):
-        if (node_label := labels[i]) == None:
-            # domain node! easy
-            # print(f"Node {i} (domain node)")
-            # print("update weights:")
-            # print(update_info[:,i].real)
-            #
-            # print("neighbourhood_vals:")
-            # print(T_old[neighbourhood_idx[:,i]])
-            #
-            # print("neighbourhood_idx:")
-            # print(neighbourhood_idx[:,i])
-            T_vec[i] += update_info[:,i].real.dot(T_old[neighbourhood_idx[:,i]])
+    # First loop through domain nodes
+    for i in domain_idx:
+        # cast to real to avoid warnings (we know these entries are real-valued anyway)
+        T_vec[i] += update_info[:,i].real.dot(T_old[neighbourhood_idx[:,i]])
 
-            # print(f"new val: {T_vec[i]}")
-            # input()
-        else:
-            boundary_idx_list.append(i)
-
-
-    for i in boundary_idx_list:
-        # now solve the boundaries
+    # now solve the boundaries
+    for i in boundary_idx:
         if labels[i] == "D":
             # dirichlet boundary, easy
             # consider the need for this line in general since we should really only
@@ -202,17 +165,4 @@ def general_step(T_vec, update_info, neighbourhood_idx, labels, boundary_vals, d
             neighbourhood_normals = deriv_lambdas[neighbourhood_idx[:,i]]
             positions = update_info[:,i]
 
-            print(f"node {i}")
-            print(f"position {positions[0]}, type {labels[i]}")
-            print(f"neighbourhood positions: {positions}")
-            print(f"neighbourhood types: {neighbourhood_labels}")
-
-            # if i == 38 or i == 39:
-            #     p = True
-            # else:
-            #     p = False
-            #
-            p = False
-
-            T_vec[i] = solve_boundary_node(neighbourhood_T, positions, neighbourhood_labels, neighbourhood_vals, neighbourhood_normals, c, p=p)
-            print(f"new val: {T_vec[i]}")
+            T_vec[i] = solve_boundary_node(neighbourhood_T, positions, neighbourhood_labels, neighbourhood_vals, neighbourhood_normals, c)
