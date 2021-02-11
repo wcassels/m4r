@@ -106,7 +106,7 @@ def second_test_comparison(time_step=1.0e-4, num_steps=50, plot_every=20, trunc=
             ax.set_ylabel('y')
             ax.set_title(f'RBF solution')
 
-            trunc_sol = sarler_second_test_analytical(x, y, t*time_step, diffusivity, trunc=trunc)
+            trunc_sol = analyticals.sarler_second(x, y, t*time_step, diffusivity, trunc=trunc)
             print(np.max(np.abs(T-trunc_sol)))
             ax = fig.add_subplot(1, 2, 2, projection="3d")
             surface = ax.plot_surface(x, y, trunc_sol)
@@ -156,7 +156,7 @@ def second_test_avg_errs(time_step=1.0e-4, num_steps=50, trunc=50, shape_param=4
     for t in range(1, num_steps+1):
         solve_grid.grid_step(T, update_weights, grid_dist, shape_param, boundary_conditions, boundary_method=solve_grid.unif_boundary)
 
-        trunc_sol = sarler_second_test_analytical(x, y, t*time_step, diffusivity, trunc=trunc)
+        trunc_sol = analyticals.sarler_second(x, y, t*time_step, diffusivity, trunc=trunc)
 
         # Correct corners - this has no effect on RBF solution marching
         T[0,0], T[0,-1], T[-1,0], T[-1,-1] = trunc_sol[0,0], trunc_sol[0,-1], trunc_sol[-1,0], trunc_sol[-1,-1]
@@ -309,45 +309,6 @@ def gaussian_inf_domain_plot(time_step=0.001, x_min=-6, x_max=6, y_min=-6,
     plt.show()
 
 
-def sarler_first_test_analytical(x, y, h=750, k=52, trunc=50):
-    """
-    Returns the truncated analytical convergence solution described in the first
-    test of the Sarler paper.
-    """
-    R = -h / k
-    f = lambda x: x*np.tan(0.6*x) + R
-    # hacky way of getting betas - work on something more precise?
-    betas = fsolve(f, 2.34+5*np.arange(trunc))
-
-    # Both papers are slightly wrong!
-    return -2 * 100 * R * np.sum(np.cos(betas*x) * (betas*np.cosh(betas*(1-y)) - \
-        R * np.sinh(betas*(1-y))) / (np.cos(betas*0.6)*(betas*np.cosh(betas) - R * \
-        np.sinh(betas)) * (0.6*(R**2 + betas**2) - R)))
-
-
-def sarler_second_test_analytical(x, y, t, diff, trunc=50, dist=1):
-    """
-    Returns the truncated analytical solution described in the second test of
-    the Sarler paper.
-    """
-    sol = np.zeros_like(x)
-    m, n = x.shape
-
-    # term_idx = np.arange(1, trunc+1)
-    term_idx = np.arange(trunc) # Sarler paper has a typo :O
-
-    for i in range(m):
-        for j in range(n):
-            x_terms = sarler_second_test_nth(x[i,j], t, diff, dist, term_idx)
-            y_terms = sarler_second_test_nth(y[i,j], t, diff, dist, term_idx)
-            sum_x = 4 * np.sum(x_terms) / np.pi
-            sum_y = 4 * np.sum(y_terms) / np.pi
-
-            sol[i,j] = sum_x * sum_y
-
-    return sol
-
-
 def plot_sarler_second_analytical(t, trunc=50, diff=0.2):
     x_min, x_max = 0, 1
     y_min, y_max = 0, 1
@@ -363,26 +324,10 @@ def plot_sarler_second_analytical(t, trunc=50, diff=0.2):
 
     fig = plt.figure(figsize=(12,6))
     ax = fig.gca(projection='3d')
-    sol = sarler_second_case_analytical(x, y, t, diff, trunc=trunc)
+    sol = analyticals.sarler_second(x, y, t, diff, trunc=trunc)
     surface = ax.plot_surface(x, y, sol)
     ax.set_xlabel('x')
     ax.set_ylabel('y')
     fig.colorbar(surface)
     ax.set_title(f'Truncated analytical solution at t={t}')
     plt.show()
-
-
-def sarler_second_test_nth(eta, t, diff, dist, n):
-    """
-    Returns the nth term of either sum for the analytical solution described in
-    the second test of the Sarler paper.
-
-    Arguments:
-    - eta: x or y
-    - t: time value
-    - diff: diffusivity of the problem
-    - dist: eta_max - eta_min
-    - n: the term in the sum to compute
-    """
-    # changed eta-1 to eta?
-    return ((-1) ** n / (2*n + 1)) * np.exp(-(diff*(2*n+1)**2*np.pi**2*t) / (4*dist**2)) * np.cos((2*n+1)*np.pi*(eta)/(2*dist))
