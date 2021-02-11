@@ -4,7 +4,6 @@ Helper functions used in solution computations on a uniform rectangular grid
 
 import numpy as np
 
-
 def get_boundary_neighbourhood(edge, pos):
     """
     Return the neighbourhood indices for a boundary node, with neighbourhood
@@ -53,7 +52,7 @@ def get_Phi_Neumann(c, grid_dist):
     # for j in range(5):
     #     Phi_Neumann[0,j] = j / np.sqrt(j**2 + cr_0_sq)
 
-    # Test 
+    # Test
     Phi_Neumann[0] = np.arange(5) / np.sqrt(np.arange(5)**2 + cr_0_sq)
 
     # Other rows

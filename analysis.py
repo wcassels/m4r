@@ -6,11 +6,11 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.pyplot import cm
 import time
-from scipy.optimize import fsolve
 
 import solve_grid
 import rect_utils
 import general_utils
+import analyticals
 
 
 def sarler_first_test(time_step=1.0e-4, num_steps=50, plot_every=20, shape_param=4):
@@ -94,9 +94,6 @@ def second_test_comparison(time_step=1.0e-4, num_steps=50, plot_every=20, trunc=
     for t in range(1, num_steps+1):
         solve_grid.grid_step(T, update_weights, grid_dist, shape_param, boundary_conditions, boundary_method=solve_grid.unif_boundary)
         # Corner values are not computed. They also have no influence on future calculations
-        # so until I figure out how to do 3D plots without them, I am just setting them to
-        # be nice values :)
-        # T[0,0], T[0,-1], T[-1,0], T[-1,-1] = T[1,1], T[1,-2], T[-2,1], T[-2,-2]
 
         if (t % plot_every) == 0:
             fig = plt.figure(figsize=(12,6))
@@ -107,7 +104,7 @@ def second_test_comparison(time_step=1.0e-4, num_steps=50, plot_every=20, trunc=
             ax.set_title(f'RBF solution')
 
             trunc_sol = analyticals.sarler_second(x, y, t*time_step, diffusivity, trunc=trunc)
-            print(np.max(np.abs(T-trunc_sol)))
+            print(f"t={t*time_step:.3f}\tMean abs err: {np.mean(np.abs(T-trunc_sol))}")
             ax = fig.add_subplot(1, 2, 2, projection="3d")
             surface = ax.plot_surface(x, y, trunc_sol)
             ax.set_xlabel('x')
