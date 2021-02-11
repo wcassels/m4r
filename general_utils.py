@@ -138,7 +138,7 @@ def solve_boundary_node(T, positions, labels, vals, normal_derivs, c, p=False):
             elif label == "R":
                 Phi[i] *= -vals[i][0]
                 Phi[i] += normal_derivs[i](positions[i], positions)
-                b[i] = - vals[i][0] * vals[i][1]
+                b[i] = -vals[i][0] * vals[i][1]
 
             else:
                 raise ValueError("Invalid boundary label")
@@ -186,7 +186,7 @@ def general_step(T_vec, update_info, neighbourhood_idx, labels, boundary_vals, d
         else:
             boundary_idx_list.append(i)
 
-    print(boundary_idx_list)
+
     for i in boundary_idx_list:
         # now solve the boundaries
         if labels[i] == "D":

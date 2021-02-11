@@ -4,10 +4,8 @@ Functions to generate plots! (Will fill up when I copy across old code)
 
 import numpy as np
 import matplotlib.pyplot as plt
-from matplotlib.pyplot import cm
 import time
 
-import solve_grid
 import rect_utils
 import general_utils
 import analyticals
@@ -43,7 +41,7 @@ def sarler_first_test(time_step=1.0e-4, num_steps=50, plot_every=20, shape_param
     update_weights = general_utils.domain_update_weights(np.array([0, grid_dist, -grid_dist, grid_dist*1j, -grid_dist*1j]), time_step, diffusivity, shape_param)
 
     for t in range(1, num_steps+1):
-        solve_grid.grid_step(T, update_weights, grid_dist, shape_param, boundary_conditions, boundary_method=solve_grid.unif_boundary)
+        rect_utils.step(T, update_weights, grid_dist, shape_param, boundary_conditions, boundary_method=rect_utils.unif_boundary)
 
         if (t % plot_every) == 0:
             print(f"NAFEMs convergence val: {T[-11,-1]}")
@@ -92,7 +90,7 @@ def second_test_comparison(time_step=1.0e-4, num_steps=50, plot_every=20, trunc=
     update_weights = general_utils.domain_update_weights(np.array([0, grid_dist, -grid_dist, grid_dist*1j, -grid_dist*1j]), time_step, diffusivity, shape_param)
 
     for t in range(1, num_steps+1):
-        solve_grid.grid_step(T, update_weights, grid_dist, shape_param, boundary_conditions, boundary_method=solve_grid.unif_boundary)
+        rect_utils.step(T, update_weights, grid_dist, shape_param, boundary_conditions, boundary_method=rect_utils.unif_boundary)
         # Corner values are not computed. They also have no influence on future calculations
 
         if (t % plot_every) == 0:
@@ -151,7 +149,7 @@ def second_test_avg_errs(time_step=1.0e-4, num_steps=50, trunc=50, shape_param=4
     errs = np.zeros(num_steps+1, dtype=np.float64)
 
     for t in range(1, num_steps+1):
-        solve_grid.grid_step(T, update_weights, grid_dist, shape_param, boundary_conditions, boundary_method=solve_grid.unif_boundary)
+        rect_utils.step(T, update_weights, grid_dist, shape_param, boundary_conditions, boundary_method=rect_utils.unif_boundary)
 
         trunc_sol = analyticals.sarler_second(x, y, t*time_step, diffusivity, trunc=trunc)
 
@@ -213,7 +211,7 @@ def first_test_NAFEMs_convergence(time_step=1, convergence_crit=1.0e-6, diff=Non
         T = np.zeros_like(x, dtype=np.float64)
 
         for t in range(1, max_steps+1):
-            T_new = solve_grid.grid_step(T.copy(), update_weights, grid_dist, c, boundary_conditions, boundary_method=solve_grid.unif_boundary)
+            T_new = rect_utils.step(T.copy(), update_weights, grid_dist, c, boundary_conditions, boundary_method=rect_utils.unif_boundary)
 
             print(np.max(np.abs(T_new-T)))
             if np.max(np.abs(T_new - T)) <= convergence_crit:
@@ -265,7 +263,7 @@ def gauss_inf_domain_errs(diffusivity, time_step, x_min, x_max, y_min,
     for i in range(1,num_steps+1):
         # Shrink grid since we are not computing boundary node values
         x, y = x[1:-1,1:-1], y[1:-1,1:-1]
-        T = solve_grid.step_domain(T, update_weights)
+        T = rect_utils.step_domain(T, update_weights)
         print(f"t={i*time_step} max abs error: {np.max(np.abs(T - true_sol(i*time_step)))}")
 
         abs_diff = np.abs(T-true_sol(i*time_step))

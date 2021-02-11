@@ -134,3 +134,46 @@ def get_update_weights(Phi, diffusivity, time_step, grid_dist, shape_param):
     # weighted_phi = Phi^-T .dot(combined_deriv_vec)
     # (in this case don't need to transpose but will do in the general case)
     return np.linalg.solve(Phi.T, sum_2nd_derivs * diffusivity * time_step / (grid_dist**2))
+
+
+def domain_increment(A, weighted_phi):
+    """
+    For the uniform grid implementation, return the scaled sum of the second
+    derivatives wrt x and y of A - this is the t such that T_new = T_old + t,
+    inside the domain of the grid (currently unused since step_grid is vastly
+    more efficient in the uniform case, but will be the primary method used in
+    solving non-uniform problems)
+    """
+
+    m, n = A.shape
+
+    N = weighted_phi.size
+
+    combined_2nd_deriv = np.zeros((m, n))
+
+    # Excluding boundaries for now
+    for i in range(1, m-1):
+        for j in range(1, n-1):
+            combined_2nd_deriv[i,j] = A[rect_utils.get_grid_indices(i, j, N)].dot(weighted_phi)
+
+    return combined_2nd_deriv
+
+
+
+def get_Phi_Robin(c, grid_dist, condition_value):
+    Phi_Robin = np.zeros((5,5), dtype=np.float64)
+
+    # Max inter-neighourhood distance is 4 for this configuration
+    cr_0_sq = (c**2) * 16
+
+    # Row enforcing Robin condition
+    Phi_Robin[0] = np.arange(5) / np.sqrt(np.arange(5)**2 + cr_0_sq) - \
+                   condition_value * np.sqrt(np.arange(5)**2 + cr_0_sq) * grid_dist
+
+    # Other rows
+    for i in range(1, 5):
+        for j in range(5):
+            Phi_Robin[i,j] = np.sqrt((i-j)**2 + cr_0_sq) * grid_dist
+
+
+    return Phi_Robin
