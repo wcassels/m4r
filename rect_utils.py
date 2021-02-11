@@ -1,5 +1,5 @@
 """
-Helper functions used in solution computations on a uniform rectangular grid
+Methods for solving on a uniform rectangular grid
 """
 
 import numpy as np
