@@ -9,7 +9,7 @@ import time
 from scipy.optimize import fsolve
 
 import solve_grid
-import unif_utils
+import rect_utils
 import general_utils
 
 
@@ -87,11 +87,9 @@ def second_test_comparison(time_step=1.0e-4, num_steps=50, plot_every=20, trunc=
     # Initial condition
     T = np.ones_like(x, dtype=np.float64)
 
-    # Get the collocation matrix
-    Phi = unif_utils.get_Phi(5, shape_param)
-
     # Get simplified update weights - only works for uniform configuration!
-    update_weights = unif_utils.get_update_weights(Phi, diffusivity, time_step, grid_dist, shape_param)
+    # update_weights = rect_utils.get_update_weights(Phi, diffusivity, time_step, grid_dist, shape_param)
+    update_weights = general_utils.domain_update_weights(np.array([0, grid_dist, -grid_dist, grid_dist*1j, -grid_dist*1j]), time_step, diffusivity, shape_param)
 
     for t in range(1, num_steps+1):
         solve_grid.grid_step(T, update_weights, grid_dist, shape_param, boundary_conditions, boundary_method=solve_grid.unif_boundary)
@@ -150,11 +148,8 @@ def second_test_avg_errs(time_step=1.0e-4, num_steps=50, trunc=50, shape_param=4
     # Initial condition
     T = np.ones_like(x, dtype=np.float64)
 
-    # Get the collocation matrix
-    Phi = unif_utils.get_Phi(5, shape_param)
-
-    # Get simplified update weights - only works for uniform configuration!
-    update_weights = unif_utils.get_update_weights(Phi, diffusivity, time_step, grid_dist, shape_param)
+    # Get domain update weights
+    update_weights = general_utils.domain_update_weights(np.array([0, grid_dist, -grid_dist, grid_dist*1j, -grid_dist*1j]), time_step, diffusivity, shape_param)
 
     errs = np.zeros(num_steps+1, dtype=np.float64)
 
@@ -215,11 +210,8 @@ def first_test_NAFEMs_convergence(time_step=1, convergence_crit=1.0e-6, diff=Non
     convergence_times = np.zeros_like(cs, dtype=np.float64)
 
     for i, c in enumerate(cs):
-        # Get the collocation matrix
-        Phi = unif_utils.get_Phi(5, c)
-
-        # Get simplified update weights - only works for uniform configuration!
-        update_weights = unif_utils.get_update_weights(Phi, diffusivity, time_step, grid_dist, c)
+        # Get domain update weights
+        update_weights = general_utils.domain_update_weights(np.array([0, grid_dist, -grid_dist, grid_dist*1j, -grid_dist*1j]), time_step, diffusivity, shape_param)
 
         T = np.zeros_like(x, dtype=np.float64)
 
@@ -263,14 +255,11 @@ def gauss_inf_domain_errs(diffusivity, time_step, x_min, x_max, y_min,
     y_line = np.arange(y_min, y_max + grid_dist, grid_dist)
     x, y = np.meshgrid(x_line, y_line)
 
-    # Get the collocation matrix
-    Phi = unif_utils.get_Phi(5, shape_param)
-
     # Initial condition
     T = np.exp(-(x**2 + y**2))
 
-    # Get simplified update weights - only works for uniform configuration!
-    update_weights = unif_utils.get_update_weights(Phi, diffusivity, time_step, grid_dist, shape_param)
+    # Get domain update weights
+    update_weights = general_utils.domain_update_weights(np.array([0, grid_dist, -grid_dist, grid_dist*1j, -grid_dist*1j]), time_step, diffusivity, shape_param)
 
     errs = np.zeros(num_steps+1, dtype=np.float64)
     t1 = time.time()
