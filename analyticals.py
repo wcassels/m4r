@@ -8,8 +8,9 @@ def sarler_first(x, y, h=750, k=52, trunc=50):
     """
     R = -h / k
     f = lambda x: x*np.tan(0.6*x) + R
-    # hacky way of getting betas - work on something more precise?
-    betas = fsolve(f, 2.34+5*np.arange(trunc))
+
+    # Get betas 
+    betas = fsolve(f, 2.34+5*np.arange(trunc), xtol=1e-14)
 
     # Both papers are slightly wrong!
     point_lambda = lambda x, y: sarler_first_point_eval(x, y, betas, R)
