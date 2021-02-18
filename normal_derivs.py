@@ -2,7 +2,7 @@ import numpy as np
 
 def cartesian(centre_pos, positions, c, axis, direction):
     """
-    Function to evaluate the derivative with respect to x or y at a boundary
+    Evaluates the derivative with respect to x or y at a boundary
 
     Arguments:
     - centre_pos: position of the centre node

@@ -11,7 +11,7 @@ import general_utils
 import analyticals
 
 
-def sarler_first_test(time_step=1.0e-4, num_steps=50, plot_every=20, shape_param=4):
+def first_test(time_step=1.0e-4, num_steps=50, plot_every=20, shape_param=4):
     x_min, x_max = 0.0, 0.6
     y_min, y_max = 0.0, 1.0
 
@@ -54,6 +54,67 @@ def sarler_first_test(time_step=1.0e-4, num_steps=50, plot_every=20, shape_param
             plt.show()
 
     return
+
+def first_test_errs(time_step=0.1, convergence_tol=1e-6):
+    """
+    Runs until convergence, and produces an avg abs error plot
+    """
+    x_min, x_max = 0.0, 0.6
+    y_min, y_max = 0.0, 1.0
+
+    # Diffusivity as described in the first test
+    rho, param_c, k = 7850, 460, 52
+    diffusivity = k / (rho * param_c)
+
+    # test 1
+    boundary_conditions = {"North": ("Robin", (-750/k, 0)), "East": ("Robin", (-750/k, 0)),
+                           "South": ("Dirichlet", (100, None)), "West": ("Neumann", (0, None))}
+
+    # second grid layout
+    grid_dist = 0.02
+
+    x_line = np.arange(x_min, x_max + grid_dist, grid_dist)
+    y_line = np.arange(y_min, y_max + grid_dist, grid_dist)
+    x, y = np.meshgrid(x_line, y_line)
+    y = y[::-1]
+
+    true_sol = analyticals.sarler_first(x, y, k=k)
+
+    t = 0
+
+    cs = 4*np.arange(1, 11)
+    errs = np.zeros_like(cs, dtype=np.float64)
+    for i, c in enumerate(cs):
+        # lazily chose points in any order because with uniform x/y grid_dist this doesn't matter,
+        # but if testing cases where \Delta x != \Delta y, this requires more caution
+        update_weights = general_utils.domain_update_weights(np.array([0, grid_dist, -grid_dist, grid_dist*1j, -grid_dist*1j]), time_step, diffusivity, c)
+        T = np.zeros_like(x, dtype=np.float64)
+        t = 0
+
+
+        while True:
+            t += 1
+            T_old = T.copy()
+            rect_utils.step(T, update_weights, grid_dist, c, boundary_conditions, boundary_method=rect_utils.unif_boundary)
+            T[0,0] = true_sol[0,0]
+            T[0,-1] = true_sol[0,-1]
+            T[-1,0] = true_sol[-1,0]
+            T[-1,-1] = true_sol[-1,-1]
+
+            print(f"c={c}\tt={t*time_step:.1f}\tMax abs change: {np.max(np.abs(T-T_old))}")
+
+            if  np.max(np.abs(T-T_old)) < convergence_tol:
+                errs[i] = np.mean(np.abs(T-true_sol))
+                break
+
+    plt.semilogy(cs, errs)
+    plt.grid()
+    plt.xlabel("Shape parameter")
+    plt.ylabel("Avg error")
+    plt.title(f"Uniform configuration: average abs error at convergence\nΔt={time_step}, Δx={grid_dist}, tol={convergence_tol}")
+    plt.show()
+    return
+
 
 def second_test_comparison(time_step=1.0e-4, num_steps=50, plot_every=20, trunc=50, shape_param=4):
     """
@@ -116,7 +177,7 @@ def second_test_comparison(time_step=1.0e-4, num_steps=50, plot_every=20, trunc=
     return
 
 
-def second_test_avg_errs(time_step=1.0e-4, num_steps=50, trunc=50, shape_param=4):
+def second_test_avg_errs(time_step, trunc=50, shape_param=12, convergence_crit=1e-6):
     # second test
     x_min, x_max = 0.0, 1.0
     y_min, y_max = 0.0, 1.0
@@ -146,9 +207,12 @@ def second_test_avg_errs(time_step=1.0e-4, num_steps=50, trunc=50, shape_param=4
     # Get domain update weights
     update_weights = general_utils.domain_update_weights(np.array([0, grid_dist, -grid_dist, grid_dist*1j, -grid_dist*1j]), time_step, diffusivity, shape_param)
 
-    errs = np.zeros(num_steps+1, dtype=np.float64)
+    errs = [0]
+    t = 0
+    while True:
+        t += 1
 
-    for t in range(1, num_steps+1):
+        T_old = T.copy()
         rect_utils.step(T, update_weights, grid_dist, shape_param, boundary_conditions, boundary_method=rect_utils.unif_boundary)
 
         trunc_sol = analyticals.sarler_second(x, y, t*time_step, diffusivity, trunc=trunc)
@@ -156,12 +220,16 @@ def second_test_avg_errs(time_step=1.0e-4, num_steps=50, trunc=50, shape_param=4
         # Correct corners - this has no effect on RBF solution marching
         T[0,0], T[0,-1], T[-1,0], T[-1,-1] = trunc_sol[0,0], trunc_sol[0,-1], trunc_sol[-1,0], trunc_sol[-1,-1]
 
-        errs[t] = np.mean(np.abs(T-trunc_sol))
+        errs.append(np.mean(np.abs(T-trunc_sol)))
+        print(f"t={t*time_step:.5f}\tMax abs change: {np.max(np.abs(T-T_old))}")
+        if np.max(np.abs(T-T_old)) < convergence_crit:
+            break
 
-    plt.plot(range(num_steps+1), errs)
+    plt.plot(range(len(errs)), errs)
     plt.xlabel("Time steps")
     plt.ylabel("Error")
     plt.title(f"Average solution error (Δt={time_step})")
+    plt.grid()
     plt.show()
 
     return

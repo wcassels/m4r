@@ -26,16 +26,16 @@ def get_boundary_positions(edge):
     Return a lambda function that, given an integer index, points to the correct
     2d array index
     """
-        if edge == "North":
-            return lambda i: (0, i)
-        elif edge == "South":
-            return lambda i: (-1, i)
-        elif edge == "East":
-            return lambda i: (i, -1)
-        elif edge == "West":
-            return lambda i: (i, 0)
-        else:
-            raise ValueError("Invalid boundary selected")
+    if edge == "North":
+        return lambda i: (0, i)
+    elif edge == "South":
+        return lambda i: (-1, i)
+    elif edge == "East":
+        return lambda i: (i, -1)
+    elif edge == "West":
+        return lambda i: (i, 0)
+    else:
+        raise ValueError("Invalid boundary selected")
 
 
 def get_boundary_Phi(c, grid_dist, type, robin_val=None):
