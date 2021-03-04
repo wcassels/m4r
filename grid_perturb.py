@@ -49,7 +49,7 @@ deriv_lambdas[positions_base.real == 1] = lambda centre, positions: normal_deriv
 
 
 
-num_steps = 10000
+num_steps = 1000
 check_every = 50
 # avg_errs = np.zeros(num_steps // check_every)
 
@@ -70,9 +70,9 @@ for sd in [0, 0.001, 0.0015, 0.002]:
     x, y = positions.reshape(x_base.size).real, positions.reshape(x_base.size).imag
 
     # get neighbourhoods
-    neighbourhood_idx, update_info = general_utils.general_setup(positions, labels, boundary_vals, time_step, diffusivity, shape_param)
+    neighbourhood_idx, update_info = general_utils.general_setup(positions, labels, time_step, diffusivity, shape_param)
     for t in range(1, num_steps+1):
-        general_utils.general_step(T, update_info, neighbourhood_idx, labels, boundary_vals, deriv_lambdas, shape_param)
+        general_utils.general_step(T, update_info, neighbourhood_idx, labels, boundary_vals, deriv_lambdas, shape_param, t*time_step)
         print(t)
         if (t % check_every) == 0:
             avg_errs.append(np.mean(np.abs(T.reshape(x.shape)-analyticals.sarler_second(x, y, t*time_step, diffusivity))))

@@ -1,5 +1,5 @@
 """
-Methods for solving on a uniform rectangular grid
+Specialised methods for solving on a uniform rectangular grid
 """
 
 import numpy as np
