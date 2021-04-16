@@ -26,7 +26,6 @@ diffusivity = 1
 shape_param = 12
 
 
-
 zero8 = jn_zeros(8, 2)[-1]
 zero4 = jn_zeros(4,1)[0]
 print(zero4)
@@ -41,6 +40,7 @@ num_steps = 400
 
 # cmin, cmax = np.min(T), np.max(T)
 for num_domain_nodes in [50, 100, 200, 400, 600]:
+# for num_domain_nodes in [200]:
     nodes = boundaries.copy()
 
     x_potential, y_potential = np.meshgrid(np.linspace(-1, 1, 100), np.linspace(-1, 1, 100))
@@ -66,13 +66,20 @@ for num_domain_nodes in [50, 100, 200, 400, 600]:
     boundary_vals = np.concatenate((np.full(num_boundary_nodes, 0), np.full(num_domain_nodes, None)))
     deriv_lambdas = np.full(num_domain_nodes + num_boundary_nodes, None)
 
-    neighbourhood_idx, update_info = general_utils.general_setup(nodes, labels, time_step, diffusivity, shape_param)
+    # neighbourhood_idx, update_info = general_utils.general_setup(nodes, labels, time_step, diffusivity, shape_param)
+    # neighbourhood_idx, update_info = general_utils.alternative_setup(nodes, labels, deriv_lambdas, time_step, diffusivity, shape_param)
+    neighbourhood_idx, update_info = general_utils.alt_setup_two(nodes, labels, deriv_lambdas, time_step, diffusivity, shape_param)
 
     T = sol(np.abs(nodes), np.arctan(nodes.imag/nodes.real), 0)
     errs = np.zeros(num_steps+1)
 
     for t in range(1, num_steps+1):
-        general_utils.general_step(T, update_info, neighbourhood_idx, labels, boundary_vals, deriv_lambdas, shape_param, t*time_step)
+        # general_utils.general_step(T, update_info, neighbourhood_idx, labels, boundary_vals, deriv_lambdas, shape_param, t*time_step)
+        # general_utils.alternative_step(T, update_info, neighbourhood_idx, labels, boundary_vals)
+        # T = general_utils.implicit_step(T, update_info, neighbourhood_idx, labels, boundary_vals)
+        T = general_utils.generalised_everywhere_step(T, update_info, neighbourhood_idx, labels, boundary_vals)
+        print(T.shape)
+        print(t, "done")
         errs[t] = np.mean(np.abs(T-sol(np.abs(nodes), np.arctan(nodes.imag/nodes.real), t*time_step))) # avg abs errors
         # errs[t] = np.mean(np.abs(1-T/sol(np.abs(nodes), np.arctan(nodes.imag/nodes.real), t*time_step)))
         # tests.append(np.median(T/T0))
@@ -90,20 +97,20 @@ for num_domain_nodes in [50, 100, 200, 400, 600]:
         # plt.show()
 
         # p = plt.scatter(nodes.real, nodes.imag, c=T, s=3)
-        cmin, cmax = np.min(T), np.max(T)
+        # cmin, cmax = np.min(T), np.max(T)
         # if num_domain_nodes == 400:
-        #     fig = plt.figure()
-        #     ax = fig.add_subplot(121, projection='3d')
-        #     ax2 = fig.add_subplot(122, projection='3d')
-        #     surf = ax.plot_trisurf(nodes.real, nodes.imag, T, vmin=cmin, vmax=cmax, cmap=cm.jet)
-        #     surf2 = ax2.plot_trisurf(nodes.real, nodes.imag, sol(np.abs(nodes), np.arctan(nodes.imag/nodes.real), t*time_step), vmin=cmin, vmax=cmax, cmap=cm.jet)
-        #     # ax.set_zlim(cmin, cmax)
-        #     # ax2.set_zlim(cmin, cmax)
-        #     plt.colorbar(surf)
-        #     # p.set_clim(cmin, cmax)
-        #     ax.set_title(f"RBF Solution after {t*time_step:.3f} seconds")
-        #     ax2.set_title("Analytical Solution")
-        #     plt.show()
+        # fig = plt.figure()
+        # ax = fig.add_subplot(121, projection='3d')
+        # ax2 = fig.add_subplot(122, projection='3d')
+        # surf = ax.plot_trisurf(nodes.real, nodes.imag, T, vmin=cmin, vmax=cmax, cmap=cm.jet)
+        # surf2 = ax2.plot_trisurf(nodes.real, nodes.imag, sol(np.abs(nodes), np.arctan(nodes.imag/nodes.real), t*time_step), vmin=cmin, vmax=cmax, cmap=cm.jet)
+        # # ax.set_zlim(cmin, cmax)
+        # # ax2.set_zlim(cmin, cmax)
+        # plt.colorbar(surf)
+        # # p.set_clim(cmin, cmax)
+        # ax.set_title(f"RBF Solution after {t*time_step:.3f} seconds")
+        # ax2.set_title("Analytical Solution")
+        # plt.show()
     plt.plot(errs, label=f"{num_domain_nodes} domain nodes")
 
 # # tests2 = tests / tests[0]

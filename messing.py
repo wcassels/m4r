@@ -41,18 +41,19 @@ deriv_dict = {"North": None,
               "West": lambda centre_pos, positions: normal_derivs.cartesian(centre_pos, positions, shape_param, axis="x", direction="+")}
 
 boundary_nodes, labels, boundary_vals, deriv_lambdas = node_utils.make_rectangle(x_min, x_max, y_min, y_max, num_ns_nodes, num_ew_nodes, condition_dict, value_dict, deriv_dict)
-inner_rect_nodes, _, _, _ = node_utils.make_rectangle(-0.95, 0.95, -0.95, 0.95, num_ns_nodes-2, num_ew_nodes-2, condition_dict, value_dict, deriv_dict)
+# inner_rect_nodes, _, _, _ = node_utils.make_rectangle(-0.9, 0.9, -0.9, 0.9, num_ns_nodes-1, num_ew_nodes-1, condition_dict, value_dict, deriv_dict)
+inner_rect_nodes = np.array([], dtype=np.complex128)
 num_inner_rect_nodes = inner_rect_nodes.size
 
 
-num_domain_nodes = 500
+num_domain_nodes = 1000
 
 domain_conditions = [lambda p: x_min < p.real, lambda p: p.real < x_max, lambda p: y_min < p.imag, lambda p: p.imag < y_max]
 
 # put circle in middle
 circle_centre, circle_rad = 0.0, 0.4
 domain_conditions.append(lambda p: np.abs(p-circle_centre) > circle_rad)
-circle_nodes, circle_labels, circle_boundary_vals, circle_deriv_lambdas = node_utils.make_circle(circle_centre, circle_rad, 30, "D", 0, lambda centre_pos, positions: normal_derivs.radial(centre_pos, positions, shape_param, direction="outwards"))
+circle_nodes, circle_labels, circle_boundary_vals, circle_deriv_lambdas = node_utils.make_circle(circle_centre, circle_rad, 30, "D", 2, lambda centre_pos, positions: normal_derivs.radial(centre_pos, positions, shape_param, direction="outwards"))
 # calling them circle_etc because i cant be bothered to change the names...
 # domain_conditions.append(lambda p: np.logical_or(p.real>0.4, p.real<-0.1))
 # domain_conditions.append(lambda p: np.logical_or(p.imag>0.2, p.imag<-0.5))
@@ -86,9 +87,12 @@ labels = np.concatenate((labels, np.full(num_domain_nodes+num_inner_rect_nodes, 
 boundary_vals = np.concatenate((boundary_vals, np.full(num_domain_nodes+num_inner_rect_nodes, None)))
 deriv_lambdas = np.concatenate((deriv_lambdas, np.full(num_domain_nodes+num_inner_rect_nodes, None)))
 
+plt.scatter(nodes.real, nodes.imag, s=3)
+plt.show()
+
 T = np.ones_like(nodes, dtype=np.float64)
 
-neighbourhood_idx, update_info = general_utils.general_setup(nodes, labels, time_step, diffusivity, shape_param, enforce_sum=True)
+neighbourhood_idx, update_info = general_utils.general_setup(nodes, labels, time_step, diffusivity, shape_param)
 
 plotting_nodes = np.concatenate((nodes, cut_outs))
 

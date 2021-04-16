@@ -9,6 +9,8 @@ import time
 import rect_utils
 import general_utils
 import analyticals
+import normal_derivs
+import seaborn as sn
 
 
 def first_test(time_step=1.0e-4, num_steps=50, plot_every=20, shape_param=4):
@@ -45,15 +47,119 @@ def first_test(time_step=1.0e-4, num_steps=50, plot_every=20, shape_param=4):
 
         if (t % plot_every) == 0:
             print(f"NAFEMs convergence val: {T[-11,-1]}")
+            # plt.imshow()
+            # sn.heatmap(T)
+            # plt.show()
             fig = plt.figure(figsize=(12,6))
             ax = fig.gca(projection='3d')
             surface = ax.plot_surface(x, y, T)
             ax.set_xlabel('x')
             ax.set_ylabel('y')
+            ax.view_init(elev=10, azim=110)
             ax.set_title(f'RBF solution')
             plt.show()
 
     return
+
+
+def first_test_mod(time_step=1.0e-1, num_steps=50, plot_every=20, shape_param=4, grid_dist=0.05, N=5, method="Sarler", jumps=1):
+    # formulation of first sarler grid on general domain to compare modified
+    # scheme
+    # second test
+    x_min, x_max = 0.0, 0.6
+    y_min, y_max = 0.0, 1.0
+
+    # Diffusivity as described in the first test
+    rho, param_c, k = 7850, 460, 52
+    diffusivity = k / (rho * param_c)
+    h = 750
+
+    x_line = np.arange(x_min, x_max + grid_dist, grid_dist)
+    y_line = np.arange(y_min, y_max + grid_dist, grid_dist)
+    x, y = np.meshgrid(x_line, y_line)
+
+    nodes = x.ravel() + 1j*y.ravel()
+    labels = np.full(nodes.size, None)
+    boundary_vals = np.full(nodes.size, None)
+    deriv_lambdas = np.full(nodes.size, None)
+
+    # print((np.abs(nodes.real - 0.6)<0.001).any())
+
+
+    # labels[np.abs(nodes.real - 0.6)<0.001] = "R" # east
+    # labels[nodes.real == 0] = "N" # west
+    # labels[nodes.imag == 1] = "R" # north
+    # labels[nodes.imag == 0] = "D" # south
+
+    # have to loop and do the robin nodes manually
+    for i in range(nodes.size):
+        node = nodes[i]
+
+        if node.imag == 0:
+            labels[i] = "D"
+            boundary_vals[i] = 100
+        elif node.real == 0:
+            boundary_vals[i] = 0
+            labels[i] = "N"
+        elif node.imag == 1 or abs(node.real - 0.6) < 0.001:
+            boundary_vals[i] = [-h/k, 0]
+            labels[i] = "R"
+
+    # boundary_vals[nodes.real == 0] = 0 # west
+    # # boundary_vals[np.abs(nodes.real - 0.6)<0.001] = [-h/k, 0] # east
+    # boundary_vals[nodes.imag == 0] = 100 # south
+    # boundary_vals[nodes.imag == 1] = [-h/k, 0] # north
+
+
+
+    deriv_lambdas[nodes.real == 0] = lambda centre, positions: normal_derivs.cartesian(centre, positions, shape_param, axis="x", direction="+")
+    deriv_lambdas[np.abs(nodes.real - 0.6)<0.001] = lambda centre, positions: normal_derivs.cartesian(centre, positions, shape_param, axis="x", direction="-")
+    deriv_lambdas[nodes.imag == 0] = lambda centre, positions: normal_derivs.cartesian(centre, positions, shape_param, axis="y", direction="+")
+    deriv_lambdas[nodes.imag == 1] = lambda centre, positions: normal_derivs.cartesian(centre, positions, shape_param, axis="y", direction="-")
+
+    # neighbourhood_idx, update_info = general_utils.general_setup(nodes, labels, time_step, diffusivity, shape_param)
+    neighbourhood_idx, weights = general_utils.setup(nodes, labels, boundary_vals, deriv_lambdas, time_step, diffusivity, shape_param, N, method=method)
+    # neighbourhood_idx, update_info = general_utils.alt_setup_two(nodes, labels, deriv_lambdas, time_step, diffusivity, shape_param)
+
+    T = np.zeros_like(nodes, dtype=np.float64)
+
+    errs = [0]
+    t = 0
+
+    rhs_vals = general_utils.filter_boundary_vals(boundary_vals, labels)
+
+    for t in range(1, num_steps+1):
+
+        # T_old = T.copy()
+        # general_utils.generalised_everywhere_step(T, update_info, neighbourhood_idx, labels, boundary_vals)
+        # general_utils.modified_implicit_step(T, update_info, neighbourhood_idx, labels, boundary_vals)
+        # general_utils.general_step(T, update_info, neighbourhood_idx, labels, boundary_vals, deriv_lambdas, shape_param, t*time_step)
+        T = general_utils.step(T, weights, neighbourhood_idx, labels, rhs_vals, method=method, jumps=jumps)
+
+
+        if (t % plot_every) == 0:
+            fig = plt.figure()
+            ax = fig.add_subplot(111, projection='3d')
+            ax.plot_surface(x, y, T.reshape((*x.shape)))
+            plt.xlabel("x")
+            plt.ylabel("y")
+            plt.show()
+        # trunc_sol = analyticals.sarler_second(x, y, t*time_step, diffusivity, trunc=trunc)
+        #
+        # errs.append(np.mean(np.abs(T.reshape((41,41))-trunc_sol)))
+        # print(f"t={t*time_step:.5f}\tMax abs change: {np.max(np.abs(T-T_old))}")
+        # if np.max(np.abs(T-T_old)) < convergence_crit:
+        #     break
+
+    # plt.plot(range(len(errs)), errs)
+    # plt.xlabel("Time steps")
+    # plt.ylabel("Error")
+    # plt.title(f"Average solution error (Δt={time_step})")
+    # plt.grid()
+    # plt.show()
+
+    return
+
 
 def first_test_errs(time_step=0.1, convergence_tol=1e-6):
     """
@@ -173,6 +279,72 @@ def second_test_comparison(time_step=1.0e-4, num_steps=50, plot_every=20, trunc=
             plt.suptitle(f"Comparison after {t} time steps (Δt={time_step})")
             plt.tight_layout()
             plt.show()
+
+    return
+
+def second_test_mod(time_step, trunc=50, shape_param=12, convergence_crit=1e-6):
+    # formulation of second sarler grid on general domain to compare modified
+    # scheme
+    # second test
+    x_min, x_max = 0.0, 1.0
+    y_min, y_max = 0.0, 1.0
+
+    # Diffusivity as described in the second test
+    rho, param_c, k = 1.0, 1.0, 1.0
+    diffusivity = k / (rho * param_c)
+
+    grid_dist = 0.025
+
+    x_line = np.arange(x_min, x_max + grid_dist, grid_dist)
+    y_line = np.arange(y_min, y_max + grid_dist, grid_dist)
+    x, y = np.meshgrid(x_line, y_line)
+
+    nodes = x.ravel() + 1j*y.ravel()
+    labels = np.full(nodes.size, None)
+    boundary_vals = np.full(nodes.size, None)
+    deriv_lambdas = np.full(nodes.size, None)
+
+    labels[nodes.real == 0] = "N"
+    labels[nodes.real == 1] = "D"
+    labels[nodes.imag == 1] = "D"
+    labels[nodes.imag == 0] = "N"
+    boundary_vals[nodes.real == 0] = 0
+    boundary_vals[nodes.imag == 0] = 0
+    boundary_vals[nodes.real == 1] = 0
+    boundary_vals[nodes.imag == 1] = 0
+
+    deriv_lambdas[nodes.real == 0] = lambda centre, positions: normal_derivs.cartesian(centre, positions, shape_param, axis="x", direction="+")
+    deriv_lambdas[nodes.real == 1] = lambda centre, positions: normal_derivs.cartesian(centre, positions, shape_param, axis="x", direction="-")
+    deriv_lambdas[nodes.imag == 0] = lambda centre, positions: normal_derivs.cartesian(centre, positions, shape_param, axis="y", direction="+")
+    deriv_lambdas[nodes.real == 1] = lambda centre, positions: normal_derivs.cartesian(centre, positions, shape_param, axis="y", direction="-")
+
+    neighbourhood_idx, update_info = general_utils.general_setup(nodes, labels, time_step, diffusivity, shape_param)
+    # neighbourhood_idx, update_info = general_utils.alt_setup_two(nodes, labels, deriv_lambdas, time_step, diffusivity, shape_param)
+
+    T = np.ones_like(nodes, dtype=np.float64)
+
+    errs = [0]
+    t = 0
+    while True:
+        t += 1
+
+        T_old = T.copy()
+        # general_utils.generalised_everywhere_step(T, update_info, neighbourhood_idx, labels, boundary_vals)
+        # general_utils.modified_implicit_step(T, update_info, neighbourhood_idx, labels, boundary_vals)
+        general_utils.general_step(T, update_info, neighbourhood_idx, labels, boundary_vals, deriv_lambdas, shape_param, t*time_step)
+        trunc_sol = analyticals.sarler_second(x, y, t*time_step, diffusivity, trunc=trunc)
+
+        errs.append(np.mean(np.abs(T.reshape((41,41))-trunc_sol)))
+        print(f"t={t*time_step:.5f}\tMax abs change: {np.max(np.abs(T-T_old))}")
+        if np.max(np.abs(T-T_old)) < convergence_crit:
+            break
+
+    plt.plot(range(len(errs)), errs)
+    plt.xlabel("Time steps")
+    plt.ylabel("Error")
+    plt.title(f"Average solution error (Δt={time_step})")
+    plt.grid()
+    plt.show()
 
     return
 
@@ -394,3 +566,4 @@ def plot_sarler_second_analytical(t, trunc=50, diff=0.2):
     fig.colorbar(surface)
     ax.set_title(f'Truncated analytical solution at t={t}')
     plt.show()
+#
