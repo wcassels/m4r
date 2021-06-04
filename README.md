@@ -7,4 +7,5 @@ Scripts:
 - analyticals.py : Numerical approximations of the analytical solutions for the tests given in Sarler & Vertnik
 - node_utils.py : Generating, loading and saving node configurations
 - normal_derivs.py : Evaluating inward normal derivatives for circular and rectangular boundaries
-- 
+
+The remaining files are example scripts for generating results for specific tests/configurations.
