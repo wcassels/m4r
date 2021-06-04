@@ -7,6 +7,7 @@ from scipy.special import jv
 import general_utils
 import normal_derivs
 import node_utils
+import time
 
 # parameters that work:
 # time_step 0.0005
@@ -19,11 +20,12 @@ import node_utils
 # guess 4
 # reg 4
 
-
+# method = "Alternative"
+method = "Sarler"
 
 time_step = 0.0005
 diffusivity = .1
-shape_param = 160
+shape_param = 20
 
 num_steps = 500
 
@@ -34,10 +36,18 @@ boundary_nodes, labels, boundary_vals, deriv_lambdas = node_utils.make_circle(0.
 # domain_conditions = [lambda p: np.abs(p) < 0.98]
 domain_conditions = [lambda p: np.abs(p) < 1]
 
+# for i in range(boundary_nodes.size):
+#     plt.scatter(boundary_nodes[:i].real, boundary_nodes[:i].imag, s=3)
+#     plt.show()
+
 plt.scatter(boundary_nodes.real, boundary_nodes.imag, s=3)
 plt.show()
 
 domain_nodes, cut_outs = node_utils.fill_domain(boundary_nodes, domain_conditions, num_domain_nodes)
+
+# plt.scatter(domain_nodes.real, domain_nodes.imag, s=3, c='red')
+# plt.scatter(boundary_nodes.real, boundary_nodes.imag, s=3, c='green')
+# plt.show()
 
 
 # np.save(f"node_positions/disk/{num_boundary_nodes}boundary{num_domain_nodes}domain", nodes)
@@ -84,11 +94,9 @@ input(f"λ={λ}")
 
 sol = lambda r, theta, t: np.exp(-λ**2 * diffusivity * t) * np.cos(μ * theta) * jv(μ, λ * r)
 fig, ax = plt.subplots(1, 2)
-for reg in [0,2]:
+for reg in [0]:
     print(f"reg={reg}")
-    neighbourhood_idx1, update_info1 = general_utils.general_setup(nodes, labels, time_step, diffusivity, shape_param, reg=reg)#, dtype=np.float128)
-    # neighbourhood_idx, update_info = general_utils.alternative_setup(nodes, labels, deriv_lambdas, time_step, diffusivity, shape_param, reg=reg)
-    neighbourhood_idx2, update_info2 = general_utils.alt_setup_two(nodes, labels, deriv_lambdas, time_step, diffusivity, shape_param, reg=reg)
+
     # T = np.zeros_like(nodes, dtype=np.float128)
     # T[:] = np.exp(-(np.abs(nodes))**2)
     rs = np.abs(nodes)
@@ -121,27 +129,40 @@ for reg in [0,2]:
     plot_cond = lambda t: True
     errs = np.zeros((1+num_steps, 2), dtype=np.float64)
 
+    neighbourhood_idx, update_weights = general_utils.setup(nodes, labels, boundary_vals, deriv_lambdas, time_step, diffusivity, shape_param, N=5, method=method)
 
+    # for t in range(1, num_steps+1):
+    t = 0
+    while True:
+        t += 1
+        if t ==  15556:
+            break
 
-    for t in range(1, num_steps+1):
-        general_utils.general_step(T, update_info1, neighbourhood_idx1, labels, boundary_vals, deriv_lambdas, shape_param, t*time_step)
-        # general_utils.alternative_step(T, update_info, neighbourhood_idx, labels, boundary_vals)
-        general_utils.generalised_everywhere_step(T_mod, update_info2, neighbourhood_idx2, labels, boundary_vals)
-        # general_utils.modified_implicit_step(T_implicit, update_info2, neighbourhood_idx2, labels, boundary_vals)
-        # print(T.dtype)
-        errs[t,0] = np.mean(np.abs(T-sol(rs, thetas, t*time_step)))
-        errs[t,1] = np.mean(np.abs(T_mod-sol(rs,thetas,t*time_step)))
+        t1 = time.time()
+        T = general_utils.step(T, update_weights, neighbourhood_idx, labels, general_utils.filter_boundary_vals(boundary_vals, labels), method="Sarler")
+        t2 = time.time()
+        print("time: ", t2-t1)
+        input()
+        # errs[t,0] = np.mean(np.abs(T-sol(rs, thetas, t*time_step)))
+        # errs[t,1] = np.mean(np.abs(T_mod-sol(rs,thetas,t*time_step)))
+        max_err = np.max(np.abs(T - sol(rs, thetas, t*time_step)))
+        print("max err:", np.max(np.abs(T - sol(rs, thetas, t*time_step))))
         # errs[t,2] = np.mean(np.abs(T_implicit-sol(rs,thetas,t*time_step)))
         print(t)
         # if plot_cond(t):
+        if True:
+        # if t in [1, 21, 31, 41, 51]:
+        # if False:
+        # if max_err > 1:
             # SINGLE PLOT
-            # fig = plt.figure()
-            # ax = fig.add_subplot(111, projection='3d')
-            #
-            # surf = ax.plot_trisurf(nodes.real, nodes.imag, T)#, vmin=cmin, vmax=cmax)
-            # # plt.colorbar()
+            fig = plt.figure()
+            ax = fig.add_subplot(111, projection='3d')
+
+            surf = ax.plot_trisurf(nodes.real, nodes.imag, T)#, vmin=cmin, vmax=cmax)
+            # plt.colorbar()
             # ax.set_title(f"RBF Solution after {t*time_step:.3f} seconds using modified implicit scheme")
-            # plt.show()
+            plt.show()
+            # plt.savefig(f"report_figs/disk_n/{t}_{method}.pdf", format="pdf")
 
             # COMPARISON PLOT
             # cmin, cmax = np.min(sol(rs, thetas, t*time_step)), np.max(sol(rs, thetas, t*time_step))

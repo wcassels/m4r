@@ -5,23 +5,27 @@ Methods for solving on a general domain
 import numpy as np
 import scipy.sparse
 from scipy.sparse.linalg import gmres
+import matplotlib.pyplot as plt
 
-def setup(positions, labels, boundary_vals, normal_derivs, time_step, diffusivity, c, N, dtype=np.float64, reg=0, method="Sarler"):
+def setup(positions, labels, boundary_vals, normal_derivs, time_step, diffusivity, c, N, dtype=np.float64, reg=0, method="Sarler", c_boundary=None):
     """
     Setup for the final, fully general, weight based solution procedure.
     Returns idx, weights (including the +1 on central nodes)
 
-    Handles Robin nodes just fine :)
+    Handles all boundaries
     """
+    if c_boundary is None:
+        c_boundary = c
+
     if method == "Sarler" or method == "Sarler implicit":
-        return sarler_setup(positions, labels, boundary_vals, normal_derivs, time_step, diffusivity, c, N, dtype, reg)
+        return sarler_setup(positions, labels, boundary_vals, normal_derivs, time_step, diffusivity, c, c_boundary, N, dtype, reg)
     elif method == "Alternative" or method == "Alternative implicit":
-        return alternative_setup(positions, labels, boundary_vals, normal_derivs, time_step, diffusivity, c, N, dtype, reg)
+        return alternative_setup(positions, labels, boundary_vals, normal_derivs, time_step, diffusivity, c, c_boundary, N, dtype, reg)
     else:
         raise ValueError("Invalid solution method argument")
 
 
-def sarler_setup(positions, labels, boundary_vals, normal_derivs, time_step, diffusivity, c, N, dtype=np.float64, reg=0):
+def sarler_setup(positions, labels, boundary_vals, normal_derivs, time_step, diffusivity, c, c_boundary, N, dtype=np.float64, reg=0):
     """
     Weight based implementation of original scheme presented by Sarler.
     Returns idx, weights (including the +1 on central nodes)
@@ -42,7 +46,9 @@ def sarler_setup(positions, labels, boundary_vals, normal_derivs, time_step, dif
     # hacky way of excluding same-type boundaries...
     # except don't need to exclude dirichlet since we aren't taking derivatives
     neumann_possibilities[labels == "N"] = np.inf
+    neumann_possibilities[labels == "R"] = np.inf
     robin_possibilities[labels == "R"] = np.inf
+    robin_possibilities[labels == "N"] = np.inf
 
     boundary_possibilities = positions.copy()
 
@@ -86,7 +92,7 @@ def sarler_setup(positions, labels, boundary_vals, normal_derivs, time_step, dif
             w_idx = neighbourhood_idx[:,i]
 
             # weights[:,i] = sarler_boundary_weights(np.insert(positions[idx], 0, positions[i]), np.insert(labels[idx], 0, node_label), np.insert(normal_derivs[idx], 0, normal_derivs[i]), c)
-            weights[:,i] = sarler_boundary_weights(positions[w_idx], labels[w_idx], boundary_vals[w_idx], normal_derivs[w_idx], c, dtype=dtype)
+            weights[:,i] = sarler_boundary_weights(positions[w_idx], labels[w_idx], boundary_vals[w_idx], normal_derivs[w_idx], c_boundary, dtype=dtype)
 
     return neighbourhood_idx, weights
 
@@ -140,10 +146,24 @@ def sarler_boundary_weights(positions, labels, boundary_vals, normal_derivs, c, 
             else:
                 raise ValueError("Invalid boundary label")
 
-    return np.linalg.solve(Phi.T, phi_vec) # then just needs to be dotted with T (modified with condition vals)
+
+    try:
+        return np.linalg.solve(Phi.T, phi_vec) # then just needs to be dotted with T (modified with condition vals)
+    except:
+        # debug plotting
+        print(positions[0], labels[0])
+        print(positions)
+        print(labels)
+
+        print(Phi)
+
+        plt.scatter(positions.real, positions.imag)
+        plt.scatter(positions[0].real, positions[0].imag, c="red")
+        plt.grid()
+        plt.show()
 
 
-def alternative_setup(positions, labels, boundary_vals, normal_derivs, time_step, diffusivity, c, N, dtype, reg):
+def alternative_setup(positions, labels, boundary_vals, normal_derivs, time_step, diffusivity, c, c_boundary, N, dtype, reg):
     """
     Solution procedure with my boundary modifications
     """
@@ -227,6 +247,10 @@ def alternative_setup(positions, labels, boundary_vals, normal_derivs, time_step
                 neighbourhood_idx[1:,i] = idx
 
             w_idx = neighbourhood_idx[:,i]
+            if node_label is None:
+                shape_param = c
+            else:
+                shape_param = c_boundary
             weights[:,i] = alternative_weights(positions[w_idx], labels[w_idx], boundary_vals[w_idx], normal_derivs[w_idx], time_step, diffusivity, c, dtype=dtype)
 
     return neighbourhood_idx, weights
@@ -297,7 +321,7 @@ def step(T, weights, neighbourhood_idx, labels, rhs_vals, method="Sarler", jumps
         pass
     elif method == "Alternative implicit":
         return alternative_implicit_step(T, weights, neighbourhood_idx, labels, rhs_vals, jumps=jumps)
-        raise ValueError("Not yet implemented")
+        # raise ValueError("Not yet implemented")
         pass
 
 
@@ -324,15 +348,6 @@ def sarler_step(T, weights, neighbourhood_idx, labels, rhs_vals):
         else:
             T[i] = weights[:,i].dot(T_mod[neighbourhood_idx[:,i]])
 
-            # for j, idx in enumerate(w_idx):
-            #     j_label = labels[idx]
-            #     if j_label == "N" or j_label == "D":
-            #         b[j] = boundary_vals[idx]
-            #     elif j_label == "R":
-            #         b[j] = -boundary_vals[idx][0] * boundary_vals[idx][1]
-            #
-            # T[i] = weights[:,i].dot(b)
-
     return T
 
 
@@ -358,7 +373,8 @@ def alternative_step(T, weights, neighbourhood_idx, labels, rhs_vals):
     for i in boundary_idx:
         if labels[i] == "D":
             T[i] = rhs_vals[i]
-        T[i] = weights[:,i].dot(T_mod[neighbourhood_idx[:,i]])
+        else:
+            T[i] = weights[:,i].dot(T_mod[neighbourhood_idx[:,i]])
 
     return T
 
@@ -368,8 +384,6 @@ def sarler_implicit_step(T, weights, neighbourhood_idx, labels, rhs_vals):
     """
     N = T.size
     M = scipy.sparse.lil_matrix((N, N))
-
-    # semiT = alternative_step(T.copy(), update_weights, neighbourhood_idx, labels, boundary_vals) / 2
 
     # set rhs vals values
     T[labels != None] = rhs_vals[labels != None]
@@ -383,7 +397,7 @@ def sarler_implicit_step(T, weights, neighbourhood_idx, labels, rhs_vals):
             M[i,i] = 1
         elif labels[i] == "N" or labels[i] == "R":
             M[i,i] = 1
-            for j, idx in enumerate(neighbourhood_idx[:,i]):
+            for j, idx in enumerate(neighbourhood_idx[1:,i], 1):
                 if labels[idx] == None:
                     M[i,idx] = -weights[j,i]
                 else:
@@ -392,15 +406,16 @@ def sarler_implicit_step(T, weights, neighbourhood_idx, labels, rhs_vals):
         else:
             raise ValueError("Invalid node label")
 
-    T, succ = gmres(scipy.sparse.csr_matrix(M), T, tol=1e-15)
-    print(succ)
-    # return semiT + res/2
+    # T, succ = gmres(scipy.sparse.csr_matrix(M), T, tol=1e-8)
+    T = scipy.sparse.linalg.spsolve(scipy.sparse.csr_matrix(M), T)
+
     return T
 
 
 def alternative_implicit_step(T, weights, neighbourhood_idx, labels, rhs_vals, jumps=1):
     """
     Implicit alternative step, using GMRES
+    Not currently working
     """
     N = T.size
     M = scipy.sparse.lil_matrix((N, N))
@@ -408,14 +423,6 @@ def alternative_implicit_step(T, weights, neighbourhood_idx, labels, rhs_vals, j
     domain_idx = np.where(labels == None)[0]
     boundary_idx = np.where(labels != None)[0]
 
-    # T_mod = T.copy()
-    # T_mod[labels != None] = rhs_vals[labels != None]
-
-    # for i in domain_idx:
-        # M[i, i] = 2
-        # M[i,neighbourhood_idx[:,i]] -=
-
-    # this worked fine (for jumps=1 :P)
     for i in domain_idx:
         M[i,i] = 2
         for j, idx in enumerate(neighbourhood_idx[:,i]):
@@ -426,10 +433,7 @@ def alternative_implicit_step(T, weights, neighbourhood_idx, labels, rhs_vals, j
 
     M = M[domain_idx]
     M = M[:,domain_idx]
-    # print(M.shape)
-    # # np.save("M_testing.npy", M.toarray())
-    # scipy.sparse.save_npz("M_testing.npz", scipy.sparse.csr_matrix(M))
-    # input("done")
+
     M = scipy.sparse.csr_matrix(M) ** jumps
     # print(M.toarray())
     # M = np.linalg.matrix_power(M.toarray(), jumps)
