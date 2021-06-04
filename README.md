@@ -6,5 +6,5 @@ Scripts:
 - rect_utils.py : As above but specialised to rectangular with uniform node arrangements (old, not as efficient)
 - analyticals.py : Numerical approximations of the analytical solutions for the tests given in Sarler & Vertnik
 - node_utils.py : Generating, loading and saving node configurations
-- normal_derivs.py : Evaluating inward normal derivatives for cicular and rectangular boundaries
+- normal_derivs.py : Evaluating inward normal derivatives for circular and rectangular boundaries
 - 
