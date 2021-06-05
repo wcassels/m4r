@@ -20,8 +20,8 @@ import time
 # guess 4
 # reg 4
 
-# method = "Alternative"
-method = "Sarler"
+method = "Alternative"
+# method = "Sarler"
 
 time_step = 0.0005
 diffusivity = .1
@@ -29,8 +29,8 @@ shape_param = 20
 
 num_steps = 500
 
-num_boundary_nodes = 200
-num_domain_nodes = 1001 # 1501 almost perfect but get unstable spike in just one of the corners
+num_boundary_nodes = 75
+num_domain_nodes = 700
 
 boundary_nodes, labels, boundary_vals, deriv_lambdas = node_utils.make_circle(0.0, 1.0, num_boundary_nodes, "N", 0, lambda centre, pos: normal_derivs.radial(centre, pos, shape_param, direction="inwards"))
 # domain_conditions = [lambda p: np.abs(p) < 0.98]
@@ -87,15 +87,15 @@ deriv_lambdas = np.concatenate((np.full(num_boundary_nodes, lambda centre, pos: 
 μ = 2 # from 2
 guess = 4
 
-input("i am a banan2a")
 # initial guess here has to be fairly good for solve to converge
 λ = fsolve(lambda t: jv(μ-1, t) - jv(μ+1, t), guess, xtol=1e-12)[0]
 input(f"λ={λ}")
 
 sol = lambda r, theta, t: np.exp(-λ**2 * diffusivity * t) * np.cos(μ * theta) * jv(μ, λ * r)
-fig, ax = plt.subplots(1, 2)
-for reg in [0]:
-    print(f"reg={reg}")
+# fig, ax = plt.subplots(1, 2)
+# for reg in [0]:
+for N in [3, 4, 5]:
+    # print(f"reg={reg}")
 
     # T = np.zeros_like(nodes, dtype=np.float128)
     # T[:] = np.exp(-(np.abs(nodes))**2)
@@ -127,30 +127,31 @@ for reg in [0]:
     # plot_cond = lambda t: t*time_step > 0.0
     # plot_cond = lambda t: (t%10) == 0
     plot_cond = lambda t: True
-    errs = np.zeros((1+num_steps, 2), dtype=np.float64)
+    num_steps = 1000
+    errs = np.zeros(1+num_steps, dtype=np.float64)
 
-    neighbourhood_idx, update_weights = general_utils.setup(nodes, labels, boundary_vals, deriv_lambdas, time_step, diffusivity, shape_param, N=5, method=method)
+    neighbourhood_idx, update_weights = general_utils.setup(nodes, labels, boundary_vals, deriv_lambdas, time_step, diffusivity, shape_param, N=N, method="Alternative")
 
-    # for t in range(1, num_steps+1):
-    t = 0
-    while True:
-        t += 1
-        if t ==  15556:
-            break
+    for t in range(1, num_steps+1):
+    # t = 0
+    # while True:
+        # t += 1
+        # if t ==  15556:
+            # break
 
-        t1 = time.time()
-        T = general_utils.step(T, update_weights, neighbourhood_idx, labels, general_utils.filter_boundary_vals(boundary_vals, labels), method="Sarler")
-        t2 = time.time()
-        print("time: ", t2-t1)
-        input()
-        # errs[t,0] = np.mean(np.abs(T-sol(rs, thetas, t*time_step)))
+        # t1 = time.time()
+        T = general_utils.step(T, update_weights, neighbourhood_idx, labels, general_utils.filter_boundary_vals(boundary_vals, labels), method="Alternative")
+        # t2 = time.time()
+        # print("time: ", t2-t1)
+        # input()
+        errs[t] = np.mean(np.abs(T-sol(rs, thetas, t*time_step)))
         # errs[t,1] = np.mean(np.abs(T_mod-sol(rs,thetas,t*time_step)))
-        max_err = np.max(np.abs(T - sol(rs, thetas, t*time_step)))
+        # max_err = np.max(np.abs(T - sol(rs, thetas, t*time_step)))
         print("max err:", np.max(np.abs(T - sol(rs, thetas, t*time_step))))
         # errs[t,2] = np.mean(np.abs(T_implicit-sol(rs,thetas,t*time_step)))
-        print(t)
+        # print(t)
         # if plot_cond(t):
-        if True:
+        if False:
         # if t in [1, 21, 31, 41, 51]:
         # if False:
         # if max_err > 1:
@@ -187,28 +188,36 @@ for reg in [0]:
             #
             # plt.show()
 
-    ax[0].semilogy(np.arange(1+num_steps), errs[:,0], label=f"λ={reg}")
-    ax[1].semilogy(np.arange(1+num_steps), errs[:,1], label=f"λ={reg}")
+    plt.semilogy(range(num_steps+1), errs, label=f"N={N}")
+    # plt.show()
+    # ax[0].semilogy(np.arange(1+num_steps), errs[:,0], label=f"λ={reg}")
+    # ax[1].semilogy(np.arange(1+num_steps), errs[:,1], label=f"λ={reg}")
     # ax[2].semilogy(np.arange(1+num_steps), errs[:,2], label=f"λ={reg}")
 
-ax[0].legend()
-ax[1].legend()
+plt.legend()
+plt.grid()
+plt.xlabel("Number of time steps")
+plt.ylabel("Error")
+plt.savefig("report_figs/disk_n/Ns_ALT.pdf", format="pdf")
+plt.show()
+# ax[0].legend()
+# ax[1].legend()
 # ax[2].legend()
-ax[0].grid()
-ax[1].grid()
+# ax[0].grid()
+# ax[1].grid()
 # ax[2].grid()
-ax[0].set_xlabel("Num steps")
-ax[1].set_xlabel("Num steps")
+# ax[0].set_xlabel("Num steps")
+# ax[1].set_xlabel("Num steps")
 # ax[2].set_xlabel("Num steps")
-ax[0].set_ylabel("Error")
-ax[1].set_ylabel("Error")
+# ax[0].set_ylabel("Error")
+# ax[1].set_ylabel("Error")
 # ax[2].set_ylabel("Error")
-ax[0].set_title("Original scheme")
-ax[1].set_title("My modified scheme")
+# ax[0].set_title("Original scheme")
+# ax[1].set_title("My modified scheme")
 # ax[2].set_title("My modified scheme (implicit implementation)")
 
-plt.suptitle("Comparing average solution error over time between different schemes")
+# plt.suptitle("Comparing average solution error over time between different schemes")
 # plt.legend()
 # plt.grid()
 # plt.title(f"RBF Neumann disk errors for eigenfunction initial condition\ndiff={diffusivity}, c={shape_param}, Δt={time_step}")
-plt.show()
+# plt.show()
