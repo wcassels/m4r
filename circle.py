@@ -22,7 +22,7 @@ boundaries = np.cos(boundary_thetas) + 1j*np.sin(boundary_thetas)
 # have dirichlet 0 for now
 
 time_step = 0.0005
-diffusivity = 1
+diffusivity = .2
 shape_param = 20
 method = "Alternative"
 
@@ -100,4 +100,4 @@ plt.xlabel("Number of time steps")
 plt.ylabel("Error")
 # plt.title(f"RBF disk errors for eigenfunction initial condition\ndiff={diffusivity}, c={shape_param}, Δt={time_step}")
 # plt.show()
-plt.savefig("report_figs/disk_d/Ns.pdf", format="pdf")
+plt.savefig("report_figs/disk_d/Ns_ALT.pdf", format="pdf")
