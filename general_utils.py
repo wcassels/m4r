@@ -146,21 +146,8 @@ def sarler_boundary_weights(positions, labels, boundary_vals, normal_derivs, c, 
             else:
                 raise ValueError("Invalid boundary label")
 
+    return np.linalg.solve(Phi.T, phi_vec) # then just needs to be dotted with T (modified with condition vals)
 
-    try:
-        return np.linalg.solve(Phi.T, phi_vec) # then just needs to be dotted with T (modified with condition vals)
-    except:
-        # debug plotting
-        print(positions[0], labels[0])
-        print(positions)
-        print(labels)
-
-        print(Phi)
-
-        plt.scatter(positions.real, positions.imag)
-        plt.scatter(positions[0].real, positions[0].imag, c="red")
-        plt.grid()
-        plt.show()
 
 
 def alternative_setup(positions, labels, boundary_vals, normal_derivs, time_step, diffusivity, c, c_boundary, N, dtype, reg):
@@ -289,13 +276,12 @@ def alternative_weights(positions, labels, boundary_vals, normal_derivs, time_st
                 raise ValueError("Invalid boundary label")
 
     if labels[0] is None:
-        # domain node, evaluate the second derivatives
+        # domain node, evaluate the Laplacian
         rhs = np.zeros(N, dtype=dtype)
         rhs[:] = (dist_mat_sq[0] + 2*cr_0_sq) / ((dist_mat_sq[0] + cr_0_sq) ** 1.5)
 
-        # THESE WEIGHTS HAVE THE +1 INCORPORATED
-        # TO USE THEM, JUST WRITE T_new = T_vec.dot(w)
-        # INSTEAD OF T_new += T_vec.dot(w)
+        # These weights have the +1 for the central node incorporated, for later
+        # convenience 
         w = np.linalg.solve(Phi.T, rhs) * diffusivity * time_step
         w[0] += 1
         return w
