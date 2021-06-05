@@ -8,4 +8,4 @@ Scripts:
 - node_utils.py : Generating, loading and saving node configurations
 - normal_derivs.py : Evaluating inward normal derivatives for circular and rectangular boundaries
 
-The remaining files are example scripts for generating results for specific tests/configurations.
+The remaining files are example scripts for generating results for specific tests/configurations (generally messy, with a lot of commented out code).
