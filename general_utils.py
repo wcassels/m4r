@@ -320,8 +320,7 @@ def step(T, weights, neighbourhood_idx, labels, rhs_vals, method="Sarler", jumps
         return sarler_implicit_step(T, weights, neighbourhood_idx, labels, rhs_vals)
         pass
     elif method == "Alternative implicit":
-        return alternative_implicit_step(T, weights, neighbourhood_idx, labels, rhs_vals, jumps=jumps)
-        # raise ValueError("Not yet implemented")
+        return alternative_implicit_step(T, weights, neighbourhood_idx, labels, rhs_vals, jumps=1)
         pass
 
 
@@ -434,17 +433,9 @@ def alternative_implicit_step(T, weights, neighbourhood_idx, labels, rhs_vals, j
     M = M[domain_idx]
     M = M[:,domain_idx]
 
-    M = scipy.sparse.csr_matrix(M) ** jumps
-    # print(M.toarray())
-    # M = np.linalg.matrix_power(M.toarray(), jumps)
+    M = scipy.sparse.csr_matrix(M)
     print(M)
     res, succ = gmres(M, T[labels == None], tol=1e-18)
-    # res = scipy.sparse.linalg.spsolve(M, T[labels == None])
-    # res = np.linalg.solve(M, T[labels == None])
-    print(np.mean((M.toarray()).dot(T[labels == None]) - res))
-    succ = "banana"
-    print(succ)
-    print(jumps)
     T[labels == None] = res
 
     for i in boundary_idx:

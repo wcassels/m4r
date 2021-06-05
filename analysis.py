@@ -31,6 +31,7 @@ def first_test_general(time_step=1, num_time_steps=10000, plot_every=100, dx=0.0
     Ns = [5, 6, 7, 8, 9, 10]
 
     for N in Ns:
+    # for grid_dist in grid_dists:
         x_line = np.arange(x_min, x_max + grid_dist, grid_dist)
         y_line = np.arange(y_min, y_max + grid_dist, grid_dist)
         x, y = np.meshgrid(x_line, y_line)
