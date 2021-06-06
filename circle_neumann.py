@@ -92,7 +92,7 @@ guess = 4
 input(f"λ={λ}")
 
 sol = lambda r, theta, t: np.exp(-λ**2 * diffusivity * t) * np.cos(μ * theta) * jv(μ, λ * r)
-for N in [7, 9, 11, 12]:
+for N in [3, 5, 7, 9]:
     rs = np.abs(nodes)
     thetas = np.arccos(nodes.real / rs)
     thetas[nodes.imag < 0] *= -1
@@ -105,7 +105,7 @@ for N in [7, 9, 11, 12]:
     num_steps = 1000
     errs = np.zeros(1+num_steps, dtype=np.float64)
 
-    neighbourhood_idx, update_weights, boundary_flags = general_utils.setup(nodes, labels, boundary_vals, deriv_lambdas, time_step, diffusivity, shape_param, N=N, method="Alternative", N_boundary=5)
+    neighbourhood_idx, update_weights, boundary_flags = general_utils.setup(nodes, labels, boundary_vals, deriv_lambdas, time_step, diffusivity, shape_param, N=N, method="Alternative", N_boundary=5)#, return_conds=True)
     # neighbourhood_idx, update_weights = general_utils.setup(nodes, labels, boundary_vals, deriv_lambdas, time_step, diffusivity, shape_param, N=N, method="Alternative")#, N_boundary=5)
 
 

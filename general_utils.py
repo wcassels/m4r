@@ -7,11 +7,13 @@ import scipy.sparse
 from scipy.sparse.linalg import gmres
 import matplotlib.pyplot as plt
 
-def setup(positions, labels, boundary_vals, normal_derivs, time_step, diffusivity, c, N, dtype=np.float64, reg=0, method="Sarler", c_boundary=None, N_boundary=None):
+
+def setup(positions, labels, boundary_vals, normal_derivs, time_step, diffusivity, c, N, dtype=np.float64, reg=0, method="Sarler", c_boundary=None, N_boundary=None, return_conds=False):
     """
     Setup for the final, fully general, weight based solution procedure.
     Returns idx, weights (including the +1 on central nodes) or if N_boundary is
     specified, returns idx, weights, boundary_flags (alternative setup only)
+    plus the condition number distribution if requested
 
     Handles all boundaries
     """
@@ -194,6 +196,12 @@ def alternative_setup(positions, labels, boundary_vals, normal_derivs, time_step
     # poss_dict = {"D": positions, "D-f": positions, "N": neumann_possibilities, "R": robin_possibilities}
     poss_dict = {"D": boundary_possibilities, "D-f": boundary_possibilities, "N": boundary_possibilities, "R": boundary_possibilities}
 
+    # awful code but convenient way to get average condition numbers
+    # global avg_cond
+    # avg_cond = 0
+    # global num_domain
+    # num_domain = 0
+
     for i in range(positions.size):
         # Boundary node
         node_label = labels[i]
@@ -279,6 +287,10 @@ def alternative_setup(positions, labels, boundary_vals, normal_derivs, time_step
             w_idx = neighbourhood_idx[:m,i]
             weights[:m,i] = alternative_weights(positions[w_idx], labels[w_idx], boundary_vals[w_idx], normal_derivs[w_idx], time_step, diffusivity, shape_param, dtype=dtype)
 
+    # save condition numbers
+    # input(f"N_\omega={N}, avg cond is {avg_cond/num_domain}")
+    # np.save(f"data/disk_N_conds/{N}", avg_cond/num_domain)
+
     if N_boundary:
         return neighbourhood_idx, weights, boundary_flags
     else:
@@ -304,12 +316,15 @@ def alternative_weights(positions, labels, boundary_vals, normal_derivs, time_st
     # phi_vec
     phi_vec = Phi[0].copy()
 
+    flag = False
+
     # now override rows in Phi and entries in b that correspond to boundary nodes
     for i in range(N):
         if (label := labels[i]) is not None:
             if label == "D":
                 pass
             elif label == "N":
+                flag = True
                 Phi[i] = normal_derivs[i](positions[i], positions)
             elif label == "R":
                 Phi[i] *= -boundary_vals[i][0]
@@ -326,6 +341,14 @@ def alternative_weights(positions, labels, boundary_vals, normal_derivs, time_st
         # convenience
         w = np.linalg.solve(Phi.T, rhs) * diffusivity * time_step
         w[0] += 1
+
+        # for plotting condition numbers
+        # if not flag:
+        #     global avg_cond
+        #     global num_domain
+        #     avg_cond += np.linalg.cond(Phi)
+        #     num_domain += 1
+
         return w
     else:
         # boundary node, interpolate
