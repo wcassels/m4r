@@ -154,7 +154,12 @@ def alternative_setup(positions, labels, boundary_vals, normal_derivs, time_step
     """
     Solution procedure with my boundary modifications
     """
-    neighbourhood_idx = np.zeros((max(N, N_boundary), positions.size), dtype=int)
+    if N_boundary is None:
+        m = N
+    else:
+        m = max(N, N_boundary)
+
+    neighbourhood_idx = np.zeros((m, positions.size), dtype=int)
 
     # if the boundary domains of influences  are a different size to regular ones,
     # have to store flags for each node for whether their domains contain
@@ -241,36 +246,44 @@ def alternative_setup(positions, labels, boundary_vals, normal_derivs, time_step
 
                     print(num_neighbours)
                     print(N_flag)
-                    if num_neighbours >= N and N_flag is False:
-                        break
-                    elif num_neighbours >= N_boundary and N_flag is True:
-                        break
+                    if N_boundary:
+                        if num_neighbours >= N and N_flag is False:
+                            break
+                        elif num_neighbours >= N_boundary and N_flag is True:
+                            break
+                    else:
+                        if num_neighbours >= N:
+                            break
 
             else:
-                boundary_flags[i] = True
+                if N_boundary:
+                    boundary_flags[i] = True
+                    m = N_boundary
+                else:
+                    m = N
                 possible_neighbours = poss_dict[node_label]
                 rel_pos = possible_neighbours - centre_pos
 
-                idx = (np.abs(rel_pos)).argsort()[:N_boundary-1] # since the centre node is not contained in this array
+                idx = (np.abs(rel_pos)).argsort()[:m-1] # since the centre node is not contained in this array
 
                 neighbourhood_idx[0,i] = i
-                neighbourhood_idx[1:N_boundary,i] = idx
+                neighbourhood_idx[1:m,i] = idx
 
             if node_label is None:
                 shape_param = c
             else:
                 shape_param = c_boundary
 
-            if boundary_flags[i]:
+            if N_boundary and boundary_flags[i]:
                 m = N_boundary
             else:
                 m = N
 
-            print(m)
-            print(boundary_flags[i])
-            print(labels[i])
-            print(neighbourhood_idx[:,i])
-            print(neighbourhood_idx[:m,i])
+            # print(m)
+            # print(boundary_flags[i])
+            # print(labels[i])
+            # print(neighbourhood_idx[:,i])
+            # print(neighbourhood_idx[:m,i])
             w_idx = neighbourhood_idx[:m,i]
             weights[:m,i] = alternative_weights(positions[w_idx], labels[w_idx], boundary_vals[w_idx], normal_derivs[w_idx], time_step, diffusivity, shape_param, dtype=dtype)
 
@@ -333,8 +346,8 @@ def step(T, weights, neighbourhood_idx, labels, rhs_vals, N, N_boundary=None, bo
 
     Takes filtered rhs_vals argument
     """
-    if N_boundary is None:
-        N_boundary = N
+    # if N_boundary is None:
+        # N_boundary = N
     if method == "Sarler":
         return sarler_step(T, weights, neighbourhood_idx, labels, rhs_vals)
         pass
@@ -401,7 +414,7 @@ def alternative_step(T, weights, neighbourhood_idx, labels, rhs_vals, N):
         if labels[i] == "D":
             T[i] = rhs_vals[i]
         else:
-            T[i] = weights[:N_boundary,i].dot(T_mod[neighbourhood_idx[:N_boundary,i]])
+            T[i] = weights[:N,i].dot(T_mod[neighbourhood_idx[:N,i]])
 
     return T
 
