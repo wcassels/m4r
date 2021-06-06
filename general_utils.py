@@ -10,7 +10,8 @@ import matplotlib.pyplot as plt
 def setup(positions, labels, boundary_vals, normal_derivs, time_step, diffusivity, c, N, dtype=np.float64, reg=0, method="Sarler", c_boundary=None, N_boundary=None):
     """
     Setup for the final, fully general, weight based solution procedure.
-    Returns idx, weights (including the +1 on central nodes)
+    Returns idx, weights (including the +1 on central nodes) or if N_boundary is
+    specified, returns idx, weights, boundary_flags (alternative setup only)
 
     Handles all boundaries
     """
@@ -232,7 +233,6 @@ def alternative_setup(positions, labels, boundary_vals, normal_derivs, time_step
                                     num_neighbours = N_boundary
                                     neighbourhood_idx[N:,i] = 0
                                     boundary_flags[i] = False
-                                    # print("")
                                     break
                                 else:
                                     continue
@@ -240,12 +240,9 @@ def alternative_setup(positions, labels, boundary_vals, normal_derivs, time_step
                         else:
                             continue
                     else:
-                        print("Added standard", index)
                         neighbourhood_idx[num_neighbours,i] = index
                         num_neighbours += 1
 
-                    print(num_neighbours)
-                    print(N_flag)
                     if N_boundary:
                         if num_neighbours >= N and N_flag is False:
                             break
@@ -279,11 +276,6 @@ def alternative_setup(positions, labels, boundary_vals, normal_derivs, time_step
             else:
                 m = N
 
-            # print(m)
-            # print(boundary_flags[i])
-            # print(labels[i])
-            # print(neighbourhood_idx[:,i])
-            # print(neighbourhood_idx[:m,i])
             w_idx = neighbourhood_idx[:m,i]
             weights[:m,i] = alternative_weights(positions[w_idx], labels[w_idx], boundary_vals[w_idx], normal_derivs[w_idx], time_step, diffusivity, shape_param, dtype=dtype)
 
@@ -346,8 +338,6 @@ def step(T, weights, neighbourhood_idx, labels, rhs_vals, N, N_boundary=None, bo
 
     Takes filtered rhs_vals argument
     """
-    # if N_boundary is None:
-        # N_boundary = N
     if method == "Sarler":
         return sarler_step(T, weights, neighbourhood_idx, labels, rhs_vals)
         pass

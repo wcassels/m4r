@@ -92,13 +92,7 @@ guess = 4
 input(f"λ={λ}")
 
 sol = lambda r, theta, t: np.exp(-λ**2 * diffusivity * t) * np.cos(μ * theta) * jv(μ, λ * r)
-# fig, ax = plt.subplots(1, 2)
-for N in [3, 4, 5]:
-# for N in [8]:
-
-
-    # T = np.zeros_like(nodes, dtype=np.float128)
-    # T[:] = np.exp(-(np.abs(nodes))**2)
+for N in [7, 9, 11, 12]:
     rs = np.abs(nodes)
     thetas = np.arccos(nodes.real / rs)
     thetas[nodes.imag < 0] *= -1
@@ -107,31 +101,12 @@ for N in [3, 4, 5]:
     # T = np.exp(-np.abs(nodes)**2)
     T_mod = T.copy()
     T_implicit = T.copy()
-    # print(T.dtype)
-    #
-    # cmin, cmax = np.min(T), np.max(T)
-    # #
-    # fig = plt.figure()
-    # ax = fig.add_subplot(111, projection='3d')
-    #
-    # surf = ax.plot_trisurf(nodes.real, nodes.imag, T)#, vmin=cmin, vmax=cmax, cmap=cm.jet)
-    #
-    # # ax.set_zlim(cmin, cmax)
-    # # ax2.set_zlim(cmin, cmax)
-    # # plt.colorbar(surf)
-    # # p.set_clim(cmin, cmax)
-    # ax.set_title(f"Initial condition")
-    #
-    # plt.show()
-
-    # plot_cond = lambda t: t*time_step > 0.0
-    # plot_cond = lambda t: (t%10) == 0
     plot_cond = lambda t: True
     num_steps = 1000
     errs = np.zeros(1+num_steps, dtype=np.float64)
 
-    # neighbourhood_idx, update_weights, boundary_flags = general_utils.setup(nodes, labels, boundary_vals, deriv_lambdas, time_step, diffusivity, shape_param, N=N, method="Alternative", N_boundary=5)
-    neighbourhood_idx, update_weights = general_utils.setup(nodes, labels, boundary_vals, deriv_lambdas, time_step, diffusivity, shape_param, N=N, method="Alternative")#, N_boundary=5)
+    neighbourhood_idx, update_weights, boundary_flags = general_utils.setup(nodes, labels, boundary_vals, deriv_lambdas, time_step, diffusivity, shape_param, N=N, method="Alternative", N_boundary=5)
+    # neighbourhood_idx, update_weights = general_utils.setup(nodes, labels, boundary_vals, deriv_lambdas, time_step, diffusivity, shape_param, N=N, method="Alternative")#, N_boundary=5)
 
 
     for t in range(1, num_steps+1):
@@ -142,7 +117,7 @@ for N in [3, 4, 5]:
             # break
 
         # t1 = time.time()
-        T = general_utils.step(T, update_weights, neighbourhood_idx, labels, general_utils.filter_boundary_vals(boundary_vals, labels), method="Alternative", N=N)#, N_boundary=5, boundary_flags=boundary_flags)
+        T = general_utils.step(T, update_weights, neighbourhood_idx, labels, general_utils.filter_boundary_vals(boundary_vals, labels), method="Alternative", N=N, N_boundary=5, boundary_flags=boundary_flags)
         # t2 = time.time()
         # print("time: ", t2-t1)
         # input()
@@ -200,7 +175,7 @@ plt.legend()
 plt.grid()
 plt.xlabel("Number of time steps")
 plt.ylabel("Error")
-plt.savefig("report_figs/disk_n/Ns_ALT.pdf", format="pdf")
+plt.savefig("report_figs/disk_n/Ns_fixed_bdry_EXTENDED.pdf", format="pdf")
 plt.show()
 # ax[0].legend()
 # ax[1].legend()

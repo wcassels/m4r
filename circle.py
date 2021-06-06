@@ -79,7 +79,7 @@ for N in Ns:
     # plt.show()
 
     for t in range(1, num_steps+1):
-        T = general_utils.step(T, update_weights, neighbourhood_idx, labels, general_utils.filter_boundary_vals(boundary_vals, labels), method=method)
+        T = general_utils.step(T, update_weights, neighbourhood_idx, labels, general_utils.filter_boundary_vals(boundary_vals, labels), method=method, N=N)
         print(T.shape)
         print(t, "done")
         errs[t] = np.mean(np.abs(T-sol(np.abs(nodes), np.arctan(nodes.imag/nodes.real), t*time_step))) # avg abs errors
@@ -92,7 +92,7 @@ for N in Ns:
         # surf = ax.plot_trisurf(nodes.real, nodes.imag, sol(np.abs(nodes), np.arctan(nodes.imag/nodes.real), t * time_step))
 
         # plt.show()
-    plt.semilogy(range(num_steps+1), errs, label=f"N={N}")
+    plt.semilogy(range(num_steps+1), errs, label=f"$N_\omega$={N}")
 
 plt.legend()
 plt.grid()
