@@ -316,15 +316,12 @@ def alternative_weights(positions, labels, boundary_vals, normal_derivs, time_st
     # phi_vec
     phi_vec = Phi[0].copy()
 
-    flag = False
-
-    # now override rows in Phi and entries in b that correspond to boundary nodes
+    # override rows in Phi that correspond to boundary nodes
     for i in range(N):
         if (label := labels[i]) is not None:
             if label == "D":
                 pass
             elif label == "N":
-                flag = True
                 Phi[i] = normal_derivs[i](positions[i], positions)
             elif label == "R":
                 Phi[i] *= -boundary_vals[i][0]
@@ -337,18 +334,9 @@ def alternative_weights(positions, labels, boundary_vals, normal_derivs, time_st
         rhs = np.zeros(N, dtype=dtype)
         rhs[:] = (dist_mat_sq[0] + 2*cr_0_sq) / ((dist_mat_sq[0] + cr_0_sq) ** 1.5)
 
-        # These weights have the +1 for the central node incorporated, for later
-        # convenience
+        # These weights have the +1 for the central node incorporated, for later convenience
         w = np.linalg.solve(Phi.T, rhs) * diffusivity * time_step
         w[0] += 1
-
-        # for plotting condition numbers
-        # if not flag:
-        #     global avg_cond
-        #     global num_domain
-        #     avg_cond += np.linalg.cond(Phi)
-        #     num_domain += 1
-
         return w
     else:
         # boundary node, interpolate
