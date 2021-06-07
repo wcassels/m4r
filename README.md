@@ -3,7 +3,7 @@ Codebase for my 4th year research project in Mathematics, concerning the solutio
 
 Scripts:
 - general_utils.py : Setup, and time-stepping functions for both the original and alternative solution procedures, on general domains
-- rect_utils.py : As above but specialised to rectangular with uniform node arrangements (old, not as efficient)
+- rect_utils.py : As above but specialised to rectangular with uniform node arrangements (old, not as efficient, and doesn't implement any of my modifications)
 - analyticals.py : Numerical approximations of the analytical solutions for the tests given in Sarler & Vertnik, with corrections
 - node_utils.py : Generating, loading and saving node configurations
 - normal_derivs.py : Evaluating inward normal derivatives for circular and rectangular boundaries
