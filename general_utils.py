@@ -121,7 +121,8 @@ def sarler_domain_weights(positions, time_step, diffusivity, c, dtype=np.float64
 
 def sarler_boundary_weights(positions, labels, boundary_vals, normal_derivs, c, dtype=np.float64):
     """
-    Returns boundary weights, including for Robin nodes
+    Given a vector of node positions in form x+iy (relative to the centre node),
+    get the vector of boundary interpolation weights for that neighbourhood
     """
     N = positions.size
 
@@ -130,13 +131,13 @@ def sarler_boundary_weights(positions, labels, boundary_vals, normal_derivs, c, 
     dist_mat_sq[:,:] = np.abs(rel_pos - rel_pos[:,np.newaxis]) ** 2
     cr_0_sq = np.max(dist_mat_sq) * (c ** 2)
 
-    # Collocation matrix, each row of which enforces one condition on weights alpha
+    # Collocation matrix
     Phi = np.sqrt(dist_mat_sq + cr_0_sq)
 
     # phi_vec
     phi_vec = Phi[0].copy()
 
-    # now override rows in Phi and entries in b that correspond to boundary nodes
+    # now override rows in Phi that correspond to boundary nodes
     for i in range(N):
         if (label := labels[i]) is not None:
             if label == "D":
@@ -149,7 +150,7 @@ def sarler_boundary_weights(positions, labels, boundary_vals, normal_derivs, c, 
             else:
                 raise ValueError("Invalid boundary label")
 
-    return np.linalg.solve(Phi.T, phi_vec) # then just needs to be dotted with T (modified with condition vals)
+    return np.linalg.solve(Phi.T, phi_vec)
 
 
 
@@ -301,7 +302,7 @@ def alternative_weights(positions, labels, boundary_vals, normal_derivs, time_st
     """
     Alternative scheme, where boundary conditions are enforced in all near-boundary
     neighbourhoods, not just the boundary ones. Essentially treats all neighbourhoods
-    in the same way as boundary ones are treated in the original scheme (WIP)
+    in the same way as boundary ones are treated in the original scheme
     """
     N = positions.size
 
@@ -313,7 +314,6 @@ def alternative_weights(positions, labels, boundary_vals, normal_derivs, time_st
     # Collocation matrix, each row of which enforces one condition on weights alpha
     Phi = np.sqrt(dist_mat_sq + cr_0_sq)
 
-    # phi_vec
     phi_vec = Phi[0].copy()
 
     # override rows in Phi that correspond to boundary nodes
@@ -340,7 +340,7 @@ def alternative_weights(positions, labels, boundary_vals, normal_derivs, time_st
         return w
     else:
         # boundary node, interpolate
-        return np.linalg.solve(Phi.T, phi_vec) # then just needs to be dotted with T (modified with condition vals)
+        return np.linalg.solve(Phi.T, phi_vec) # then just needs to be dotted with T (modified with boundary condition values)
 
 
 def step(T, weights, neighbourhood_idx, labels, rhs_vals, N, N_boundary=None, boundary_flags=None, method="Sarler"):
@@ -382,9 +382,11 @@ def sarler_step(T, weights, neighbourhood_idx, labels, rhs_vals):
 
     T_mod = T.copy()
     T_mod[labels != None] = rhs_vals[labels != None]
+
     # update boundary nodes
     for i in boundary_idx:
         if labels[i] == "D":
+            # manually fix Dirichlet nodes
             T[i] = rhs_vals[i]
         else:
             T[i] = weights[:,i].dot(T_mod[neighbourhood_idx[:,i]])
@@ -408,10 +410,11 @@ def alternative_step(T, weights, neighbourhood_idx, labels, rhs_vals, N):
     for i in domain_idx:
         T[i] = weights[:N,i].dot(T_mod[neighbourhood_idx[:N,i]])
 
-    # interpolate boundaries with new domain values
+
     T_mod = T.copy()
     T_mod[labels != None] = rhs_vals[labels != None]
     for i in boundary_idx:
+
         if labels[i] == "D":
             T[i] = rhs_vals[i]
         else:
