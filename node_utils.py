@@ -2,7 +2,7 @@ import numpy as np
 import os
 import matplotlib.pyplot as plt
 
-def fill_domain(boundary_nodes, domain_conditions, num_domain_nodes, x_nodes=100, y_nodes=100):
+def fill_domain(boundary_nodes, domain_conditions, num_domain_nodes, x_nodes=100, y_nodes=100, autosave=False):
     """
     Assuming all boundaries have been generated, fills the domain with num_domain_nodes
     optimally placed nodes.
@@ -11,6 +11,7 @@ def fill_domain(boundary_nodes, domain_conditions, num_domain_nodes, x_nodes=100
     - boundary_nodes: array of node positions (complex format)
     - domain_conditions: list of lambdas that fully determine the shape of the domain to fill
     - num_domain_nodes: number of nodes to add
+    - autosave: optional parameter to save domain configurations in specified step sizes
     """
     # Check if nodes have been previously generated
     h = hash(tuple(boundary_nodes)) + x_nodes + y_nodes# + sum(hash(cond) for cond in domain_conditions)
@@ -19,9 +20,9 @@ def fill_domain(boundary_nodes, domain_conditions, num_domain_nodes, x_nodes=100
     else:
         try:
             nodes = np.load(f"node_positions/{h}/{num_domain_nodes}nodes.npy")
-            cut_outs = np.load(f"node_positions/{h}/{num_domain_nodes}cut_outs.npy")
+            # cut_outs = np.load(f"node_positions/{h}/{num_domain_nodes}cut_outs.npy")
             print("Node positions loaded")
-            return nodes, cut_outs
+            return nodes, None
         except FileNotFoundError:
             pass
 
@@ -62,6 +63,10 @@ def fill_domain(boundary_nodes, domain_conditions, num_domain_nodes, x_nodes=100
         # k = np.argmax(ds)
         nodes = np.append(nodes, potentials[k])
         cartesians = np.delete(potentials, k)
+
+        if autosave:
+            if (i+1) % autosave == 0:
+                np.save(f"node_positions/{h}/{i+1}nodes.npy", nodes)
 
     np.save(f"node_positions/{h}/{num_domain_nodes}nodes.npy", nodes)
     np.save(f"node_positions/{h}/{num_domain_nodes}cut_outs.npy", cut_outs)
